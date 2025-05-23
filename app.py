@@ -11,7 +11,7 @@ from io import StringIO
 
 # Streamlit Cloud: load Google credentials from secret
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["GOOGLE_SERVICE_ACCOUNT"])
+creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["GOOGLE_SERVICE_ACCOUNT"], scope)
 client = gspread.authorize(creds)
 
 # Connect to your sheet
