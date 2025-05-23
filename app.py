@@ -15,7 +15,9 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["GOOGLE_SERV
 client = gspread.authorize(creds)
 
 # Connect to your sheet
-sheet = client.open("egg_deliveries").worksheet("Log")
+spreadsheet = client.open_by_url("https://docs.google.com/spreadsheets/d/1Rej0GZl5Td6nSQiPyrmvHDerH9LhISE0eFWRO8Rl6ZY/edit")
+sheet = spreadsheet.worksheet("Log")
+
 df = get_as_dataframe(sheet).dropna(how='all')
 
 # Add calculations
