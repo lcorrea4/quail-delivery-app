@@ -12,6 +12,7 @@ from io import StringIO
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds_json = json.load(StringIO(st.secrets["GOOGLE_SERVICE_ACCOUNT"]))
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
+
 client = gspread.authorize(creds)
 
 # Connect to your sheet
