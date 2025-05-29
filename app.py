@@ -33,19 +33,10 @@ def get_5day_bucket(date):
     label = f"{start_date.strftime('%b %d')}–{end_date.strftime('%d')}"
     return f"{label} ({date.strftime('%Y')})"
 
-# Load dataframe from Google Sheet and store in session state
-if "df" not in st.session_state or st.button("🔄 Refresh Data from Google Sheet"):
-    df = get_as_dataframe(sheet).dropna(how='all')
-    df = calculate_delivery_dates(df)
-    st.session_state.df = df.copy()
-else:
-    df = st.session_state.df.copy()
 
 
 # --- UI ---
 st.title("📦 Quail Egg Delivery Tracker")
-
-
 st.subheader("📅 Upcoming Deliveries: 5-Day Agenda View")
 
 # Use the updated session state DataFrame
