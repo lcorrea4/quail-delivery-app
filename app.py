@@ -80,30 +80,30 @@ with st.form("log_form"):
 
         st.success(f"✅ Delivery logged for {store}")
         
-        # --- Agenda by 5-Day Bucket ---
-        st.subheader("📅 Upcoming Deliveries: 5-Day Agenda View")
-        
-        # Refresh dataframe in case of form submission
-        df = calculate_delivery_dates(df)
-        df = df.dropna(subset=["expected_empty_date"])
-        
-        # Create custom 5-day buckets
-        def get_5day_bucket(date):
-            start_day = ((date.day - 1) // 5) * 5 + 1
-            end_day = min(start_day + 4, pd.Period(date, freq='M').days_in_month)
-            start_date = date.replace(day=start_day)
-            end_date = date.replace(day=end_day)
-            label = f"{start_date.strftime('%b %d')}–{end_date.strftime('%d')}"
-            return f"{label} ({date.strftime('%Y')})"
-        
-        df["delivery_week"] = df["expected_empty_date"].apply(get_5day_bucket)
-        
-        # Group by 5-day interval
-        grouped = df.groupby("delivery_week")
-        
-        for group, items in grouped:
-            st.markdown(f"### 📌 {group}")
-            st.dataframe(items[["store_name", "address", "expected_empty_date", "days_until_empty"]])
+# --- Agenda by 5-Day Bucket ---
+st.subheader("📅 Upcoming Deliveries: 5-Day Agenda View")
+
+# Refresh dataframe in case of form submission
+df = calculate_delivery_dates(df)
+df = df.dropna(subset=["expected_empty_date"])
+
+# Create custom 5-day buckets
+def get_5day_bucket(date):
+    start_day = ((date.day - 1) // 5) * 5 + 1
+    end_day = min(start_day + 4, pd.Period(date, freq='M').days_in_month)
+    start_date = date.replace(day=start_day)
+    end_date = date.replace(day=end_day)
+    label = f"{start_date.strftime('%b %d')}–{end_date.strftime('%d')}"
+    return f"{label} ({date.strftime('%Y')})"
+
+df["delivery_week"] = df["expected_empty_date"].apply(get_5day_bucket)
+
+# Group by 5-day interval
+grouped = df.groupby("delivery_week")
+
+for group, items in grouped:
+    st.markdown(f"### 📌 {group}")
+    st.dataframe(items[["store_name", "address", "expected_empty_date", "days_until_empty"]])
 
 
 
