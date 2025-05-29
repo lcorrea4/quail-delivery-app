@@ -80,6 +80,48 @@ with st.form("log_form"):
 
         st.success(f"✅ Delivery logged for {store}")
 
+# --- Group Stores by Custom 5-Day Week Buckets ---
+st.subheader("📅 Upcoming Deliveries Grouped by 5-Day Intervals")
+
+# Make sure dates are datetime
+df['expected_empty_date'] = pd.to_datetime(df['expected_empty_date'], errors='coerce')
+
+# Drop rows with invalid dates
+df = df.dropna(subset=['expected_empty_date'])
+
+# Create custom 5-day bucket labels
+def get_5day_bucket(date):
+    day = date.day
+    month = date.strftime('%b')
+    year = date.year
+
+    start_day = ((day - 1) // 5) * 5 + 1
+    end_day = start_day + 4
+
+    # Adjust for end-of-month
+    last_day = (date + pd.offsets.MonthEnd(0)).day
+    if end_day > last_day:
+        end_day = last_day
+
+    return f"{month} {start_day}-{end_day}, {year}"
+
+df['delivery_window'] = df['expected_empty_date'].apply(get_5day_bucket)
+
+# Group by window
+grouped = df.groupby('delivery_window')
+
+# Display grouped agenda
+for window, group in grouped:
+    st.markdown(f"### 📆 {window}")
+    for _, row in group.iterrows():
+        st.markdown(f"- **{row['store_name']}** – {row['address']} (🗓️ {row['expected_empty_date'].date()}, {row['days_until_empty']} days left)")
+
+# Optional: Add a bar chart by delivery window
+st.subheader("📊 Delivery Volume by 5-Day Window")
+count_by_window = df['delivery_window'].value_counts().sort_index()
+st.bar_chart(count_by_window)
+
+
 
         
 
