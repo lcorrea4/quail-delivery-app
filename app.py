@@ -28,12 +28,16 @@ spreadsheet = client.open_by_key("1Rej0GZl5Td6nSQiPyrmvHDerH9LhISE0eFWRO8Rl6ZY")
 
 sheet = spreadsheet.worksheet("Sheet1")
 
-df = get_as_dataframe(sheet).dropna(how='all')
 
-# Add calculations
-df['last_delivery_date'] = pd.to_datetime(df['last_delivery_date'], errors='coerce')
-df['expected_empty_date'] = df['last_delivery_date'] + pd.to_timedelta(df['depletion_days_estimate'], unit='D')
-df['days_until_empty'] = (df['expected_empty_date'] - datetime.today()).dt.days
+def calculate_delivery_dates(df):
+    df['last_delivery_date'] = pd.to_datetime(df['last_delivery_date'], errors='coerce')
+    df['expected_empty_date'] = df['last_delivery_date'] + pd.to_timedelta(df['depletion_days_estimate'], unit='D')
+    df['days_until_empty'] = (df['expected_empty_date'] - datetime.today()).dt.days
+    return df
+    
+df = get_as_dataframe(sheet).dropna(how='all')
+df = calculate_delivery_dates(df)
+
 
 # --- UI ---
 st.title("📦 Quail Egg Delivery Tracker")
@@ -62,5 +66,8 @@ with st.form("log_form"):
             "depletion_days_estimate": depletion_days
         }])
         df = pd.concat([df, new_row], ignore_index=True)
+        df = calculate_delivery_dates(df)
+        
         set_with_dataframe(sheet, df.fillna(""))
         st.success(f"✅ Delivery logged for {store}")
+
