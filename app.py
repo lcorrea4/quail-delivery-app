@@ -20,10 +20,6 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
 spreadsheet = client.open_by_key("1Rej0GZl5Td6nSQiPyrmvHDerH9LhISE0eFWRO8Rl6ZY")
-#st.write("Spreadsheet title:", spreadsheet.title)
-
-#worksheet_titles = [ws.title for ws in spreadsheet.worksheets()]
-#st.write("Worksheets available:", worksheet_titles)
 
 
 sheet = spreadsheet.worksheet("Sheet1")
@@ -37,6 +33,14 @@ def calculate_delivery_dates(df):
     
 df = get_as_dataframe(sheet).dropna(how='all')
 df = calculate_delivery_dates(df)
+
+# Load dataframe once on app start and save to session state
+if "df" not in st.session_state:
+    df = get_as_dataframe(sheet).dropna(how='all')
+    df = calculate_delivery_dates(df)
+    st.session_state.df = df
+else:
+    df = st.session_state.df
 
 
 # --- UI ---
@@ -67,6 +71,18 @@ with st.form("log_form"):
         }])
         df = pd.concat([df, new_row], ignore_index=True)
         df = calculate_delivery_dates(df)
+
+        # Update session state
+        st.session_state.df = df
+
+        # Write updated data back to the sheet
+        set_with_dataframe(sheet, df.fillna(""))
+
+        st.success(f"✅ Delivery logged for {store}")
+
+        # Optional: Rerun app to reflect changes immediately
+        st.experimental_rerun()
+
         
         set_with_dataframe(sheet, df.fillna(""))
         st.success(f"✅ Delivery logged for {store}")
