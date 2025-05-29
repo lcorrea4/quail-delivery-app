@@ -20,7 +20,7 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
 spreadsheet = client.open_by_key("1Rej0GZl5Td6nSQiPyrmvHDerH9LhISE0eFWRO8Rl6ZY")
-sheet = spreadsheet.worksheet("Log")
+sheet = spreadsheet.worksheet("Sheet1")
 
 df = get_as_dataframe(sheet).dropna(how='all')
 
