@@ -22,13 +22,14 @@ def calculate_delivery_dates(df):
     df['days_until_empty'] = (df['expected_empty_date'] - datetime.today()).dt.days
     return df
 
-# --- Load DataFrame and Save to Session State ---
-if "df" not in st.session_state:
+# Load dataframe from Google Sheet and store in session state
+if "df" not in st.session_state or st.button("🔄 Refresh Data from Google Sheet"):
     df = get_as_dataframe(sheet).dropna(how='all')
     df = calculate_delivery_dates(df)
     st.session_state.df = df.copy()
 else:
-    df = st.session_state.df.copy()  # use a copy to be safe
+    df = st.session_state.df.copy()
+
 
 # --- UI ---
 st.title("📦 Quail Egg Delivery Tracker")
