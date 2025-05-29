@@ -71,8 +71,6 @@ df = st.session_state.df.copy()
 df = calculate_delivery_dates(df)
 df = df.dropna(subset=["expected_empty_date"])
 
-# Debugging: show current DataFrame (optional)
-st.write("Debug: Updated DataFrame", df.head())
 
 # Define custom 5-day bucket function
 def get_5day_bucket(date):
@@ -88,8 +86,6 @@ def get_5day_bucket(date):
 # Create a new column with the 5-day bucket
 df["delivery_week"] = df["expected_empty_date"].apply(get_5day_bucket)
 
-# Debugging: show unique bucket labels
-st.write("Debug: Unique Bucket Labels", df["delivery_week"].unique())
 
 # Group by the 5-day bucket
 grouped = df.groupby("delivery_week")
@@ -98,4 +94,6 @@ if grouped.ngroups == 0:
 else:
     for group, items in grouped:
         st.markdown(f"### 📌 {group}")
-        st.dataframe(items[["store_name", "address", "expected_empty_date", "days_until_empty"]])
+        agenda_table = items[["store_name", "address", "expected_empty_date", "days_until_empty"]].copy()
+        agenda_table["expected_empty_date"] = agenda_table["expected_empty_date"].dt.strftime("%b %d")
+        st.dataframe(agenda_table)
