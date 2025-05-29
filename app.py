@@ -12,16 +12,15 @@ from io import StringIO
 # Define scope
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
-# Load service account credentials from Streamlit secrets
-creds_json = json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT"])
-creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
+# Use the secrets directly as a dict
+creds_dict = st.secrets["GOOGLE_SERVICE_ACCOUNT"]
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 
 # Authorize and access the spreadsheet
 client = gspread.authorize(creds)
 
 spreadsheet = client.open_by_key("1Rej0GZl5Td6nSQiPyrmvHDerH9LhISE0eFWRO8Rl6ZY")
 sheet = spreadsheet.worksheet("Log")
-
 
 df = get_as_dataframe(sheet).dropna(how='all')
 
