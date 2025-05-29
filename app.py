@@ -80,10 +80,6 @@ with st.form("log_form"):
 
         st.success(f"✅ Delivery logged for {store}")
 
-        # Optional: Rerun app to reflect changes immediately
-        st.experimental_rerun()
 
         
-        set_with_dataframe(sheet, df.fillna(""))
-        st.success(f"✅ Delivery logged for {store}")
 
