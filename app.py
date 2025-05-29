@@ -9,14 +9,15 @@ import json
 from io import StringIO
 
 
-# Streamlit Cloud: load Google credentials from secret
+# Define scope
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["GOOGLE_SERVICE_ACCOUNT"], scope)
-client = gspread.authorize(creds)
 
-# Connect to your sheet
-#spreadsheet = client.open_by_url("https://docs.google.com/spreadsheets/d/1Rej0GZl5Td6nSQiPyrmvHDerH9LhISE0eFWRO8Rl6ZY/edit")
-#sheet = spreadsheet.worksheet("Log")
+# Load service account credentials from Streamlit secrets
+creds_json = json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT"])
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
+
+# Authorize and access the spreadsheet
+client = gspread.authorize(creds)
 
 spreadsheet = client.open_by_key("1Rej0GZl5Td6nSQiPyrmvHDerH9LhISE0eFWRO8Rl6ZY")
 sheet = spreadsheet.worksheet("Log")
