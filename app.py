@@ -22,6 +22,17 @@ def calculate_delivery_dates(df):
     df['days_until_empty'] = (df['expected_empty_date'] - datetime.today()).dt.days
     return df
 
+# Define custom 5-day bucket function
+def get_5day_bucket(date):
+    # Calculate the starting day for the bucket (in groups of 5)
+    start_day = ((date.day - 1) // 5) * 5 + 1
+    # Calculate the last day of the bucket ensuring we don't exceed the month's days
+    end_day = min(start_day + 4, pd.Period(date, freq='M').days_in_month)
+    start_date = date.replace(day=start_day)
+    end_date = date.replace(day=end_day)
+    label = f"{start_date.strftime('%b %d')}–{end_date.strftime('%d')}"
+    return f"{label} ({date.strftime('%Y')})"
+
 # Load dataframe from Google Sheet and store in session state
 if "df" not in st.session_state or st.button("🔄 Refresh Data from Google Sheet"):
     df = get_as_dataframe(sheet).dropna(how='all')
@@ -34,10 +45,33 @@ else:
 # --- UI ---
 st.title("📦 Quail Egg Delivery Tracker")
 
-# Priority list
-st.subheader("🚨 Stores Needing Delivery Soon")
-priority_df = df[df['days_until_empty'] <= 1].sort_values(by='days_until_empty')
-st.dataframe(priority_df[['store_name', 'address', 'days_until_empty']])
+
+st.subheader("📅 Upcoming Deliveries: 5-Day Agenda View")
+
+# Use the updated session state DataFrame
+df = st.session_state.df.copy()
+df = calculate_delivery_dates(df)
+df = df.dropna(subset=["expected_empty_date"])
+
+
+
+
+# Create a new column with the 5-day bucket
+df["delivery_week"] = df["expected_empty_date"].apply(get_5day_bucket)
+
+
+# Group by the 5-day bucket
+grouped = df.groupby("delivery_week")
+if grouped.ngroups == 0:
+    st.write("No groups found. Check that 'expected_empty_date' values exist in your data.")
+else:
+    for group, items in grouped:
+        st.markdown(f"### 📌 {group}")
+        agenda_table = items[["store_name", "address", "expected_empty_date", "days_until_empty"]].copy()
+        agenda_table["expected_empty_date"] = agenda_table["expected_empty_date"].dt.strftime("%b %d")
+        st.dataframe(agenda_table)
+
+
 
 # Log new delivery
 st.subheader("📝 Log a New Delivery")
@@ -63,37 +97,3 @@ with st.form("log_form"):
         st.success(f"✅ Delivery logged for {store}")
 
 # --- 5-Day Agenda Visualization ---
-
-st.subheader("📅 Upcoming Deliveries: 5-Day Agenda View")
-
-# Use the updated session state DataFrame
-df = st.session_state.df.copy()
-df = calculate_delivery_dates(df)
-df = df.dropna(subset=["expected_empty_date"])
-
-
-# Define custom 5-day bucket function
-def get_5day_bucket(date):
-    # Calculate the starting day for the bucket (in groups of 5)
-    start_day = ((date.day - 1) // 5) * 5 + 1
-    # Calculate the last day of the bucket ensuring we don't exceed the month's days
-    end_day = min(start_day + 4, pd.Period(date, freq='M').days_in_month)
-    start_date = date.replace(day=start_day)
-    end_date = date.replace(day=end_day)
-    label = f"{start_date.strftime('%b %d')}–{end_date.strftime('%d')}"
-    return f"{label} ({date.strftime('%Y')})"
-
-# Create a new column with the 5-day bucket
-df["delivery_week"] = df["expected_empty_date"].apply(get_5day_bucket)
-
-
-# Group by the 5-day bucket
-grouped = df.groupby("delivery_week")
-if grouped.ngroups == 0:
-    st.write("No groups found. Check that 'expected_empty_date' values exist in your data.")
-else:
-    for group, items in grouped:
-        st.markdown(f"### 📌 {group}")
-        agenda_table = items[["store_name", "address", "expected_empty_date", "days_until_empty"]].copy()
-        agenda_table["expected_empty_date"] = agenda_table["expected_empty_date"].dt.strftime("%b %d")
-        st.dataframe(agenda_table)
