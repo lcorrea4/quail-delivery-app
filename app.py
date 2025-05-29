@@ -20,10 +20,10 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
 spreadsheet = client.open_by_key("1Rej0GZl5Td6nSQiPyrmvHDerH9LhISE0eFWRO8Rl6ZY")
-st.write("Spreadsheet title:", spreadsheet.title)
+#st.write("Spreadsheet title:", spreadsheet.title)
 
-worksheet_titles = [ws.title for ws in spreadsheet.worksheets()]
-st.write("Worksheets available:", worksheet_titles)
+#worksheet_titles = [ws.title for ws in spreadsheet.worksheets()]
+#st.write("Worksheets available:", worksheet_titles)
 
 
 sheet = spreadsheet.worksheet("Sheet1")
