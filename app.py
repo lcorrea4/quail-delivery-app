@@ -40,7 +40,16 @@ st.title("📦 Quail Egg Delivery Tracker")
 st.subheader("📅 Upcoming Deliveries: 5-Day Agenda View")
 
 # Use the updated session state DataFrame
-df = st.session_state.df.copy()
+# Load dataframe from Google Sheet and store in session state
+if "df" not in st.session_state:
+    df = get_as_dataframe(sheet).dropna(how='all')
+    df = calculate_delivery_dates(df)
+    st.session_state.df = df.copy()
+else:
+    df = st.session_state.df.copy()
+
+
+
 df = calculate_delivery_dates(df)
 df = df.dropna(subset=["expected_empty_date"])
 
