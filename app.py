@@ -110,8 +110,8 @@ if uploaded_file:
     end_idx = df_all[df_all[2] == "Total QUAIL EGGS X 10 (QUAIL EGGS X 10)"].index[0] - 1
 
     # Subset relevant columns: F, H, J, L, N, P, R, T, V (indices: 5,7,9,...,19)
-    df_hist = df_all.loc[start_idx:end_idx, [5, 7, 9, 11, 13, 15, 17, 19]]
-    df_hist.columns = ["Date", "Store", "Qty", "Other1", "Other2", "Other3", "Other4", "Other5"]
+    df_hist = df_all.loc[start_idx:end_idx, [2, 5, 7, 9, 11, 13, 15, 17, 19]]
+    df_hist.columns = ["Item" ,"Type", "Date", "Num", "Memo", "Name", "Qty", "Sales Price", "Ammount","Balance"]
     df_hist["Date"] = pd.to_datetime(df_hist["Date"], errors="coerce")
     df_hist = df_hist.dropna(subset=["Date", "Store"])
 
