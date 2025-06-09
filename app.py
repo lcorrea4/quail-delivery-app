@@ -103,7 +103,7 @@ uploaded_file = st.file_uploader("Upload Excel File with Historical Deliveries",
 
 if uploaded_file:
     # Read full Excel into memory
-    df_all = pd.read_excel(uploaded_file, header=None)
+    df_all = pd.read_excel(uploaded_file, sheet_name="Sheet1", header=None)
 
     # Find start and end rows
     start_idx = df_all[df_all[2] == "QUAIL EGGS X 10 (QUAIL EGGS X 10)"].index[0] + 1
