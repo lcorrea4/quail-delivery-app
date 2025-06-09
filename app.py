@@ -96,4 +96,38 @@ with st.form("log_form"):
         set_with_dataframe(sheet, df.fillna(""))
         st.success(f"✅ Delivery logged for {store}")
 
-# --- 5-Day Agenda Visualization ---
+# --- Historical Delivery Calendar from Excel ---
+st.subheader("📊 Historical Delivery Calendar")
+
+uploaded_file = st.file_uploader("Upload Excel File with Historical Deliveries", type=["xlsx"])
+
+if uploaded_file:
+    # Read full Excel into memory
+    df_all = pd.read_excel(uploaded_file, header=None)
+
+    # Find start and end rows
+    start_idx = df_all[df_all[2] == "QUAIL EGGS X 10 (QUAIL EGGS X 10)"].index[0] + 1
+    end_idx = df_all[df_all[2] == "Total QUAIL EGGS X 10 (QUAIL EGGS X 10)"].index[0] - 1
+
+    # Subset relevant columns: F, H, J, L, N, P, R, T, V (indices: 5,7,9,...,19)
+    df_hist = df_all.loc[start_idx:end_idx, [5, 7, 9, 11, 13, 15, 17, 19]]
+    df_hist.columns = ["Date", "Store", "Qty", "Other1", "Other2", "Other3", "Other4", "Other5"]
+    df_hist["Date"] = pd.to_datetime(df_hist["Date"], errors="coerce")
+    df_hist = df_hist.dropna(subset=["Date", "Store"])
+
+    st.success("✅ Historical data loaded!")
+
+    # --- Calendar-Style Timeline Plot ---
+    import plotly.express as px
+    fig = px.timeline(
+        df_hist,
+        x_start="Date",
+        x_end="Date",
+        y="Store",
+        color="Store",
+        title="📅 Delivery History Timeline",
+    )
+    fig.update_yaxes(categoryorder="total ascending")
+    fig.update_layout(height=800)
+    st.plotly_chart(fig, use_container_width=True)
+
