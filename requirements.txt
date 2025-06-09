@@ -1,4 +1,7 @@
 streamlit
+pandas
 gspread
 oauth2client
-gspread-dataframe
+gspread_dataframe
+plotly
+openpyxl
