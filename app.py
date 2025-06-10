@@ -99,7 +99,7 @@ with st.form("log_form"):
 # --- Historical Delivery Calendar from Excel ---
 st.subheader("📊 Historical Delivery Calendar")
 
-uploaded_file = st.file_uploader("Upload Excel File with Historical Deliveries", type=["xlsx"])
+#uploaded_file = st.file_uploader("Upload Excel File with Historical Deliveries", type=["xlsx"])
 
 #import xlrd  # just in case
 import os
