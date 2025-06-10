@@ -99,13 +99,13 @@ with st.form("log_form"):
 # --- Historical Delivery Calendar from Excel ---
 st.subheader("📊 Historical Delivery Calendar")
 
-#uploaded_file = st.file_uploader("Upload Excel File with Historical Deliveries", type=["xlsx"])
+uploaded_file = st.file_uploader("Upload Excel File with Historical Deliveries", type=["xlsx"])
 
 #import xlrd  # just in case
 import os
 
 # Upload and parse Excel history
-uploaded_file = st.file_uploader("📤 Upload historical delivery .xlsm file", type=["xlsm"])
+#uploaded_file = st.file_uploader("📤 Upload historical delivery .xlsm file", type=["xlsm"])
 
 if uploaded_file:
     sheet_name = st.text_input("Enter the sheet name", value="Sheet1")
