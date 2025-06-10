@@ -129,7 +129,13 @@ if uploaded_file:
             "Type", "Date", "Num", "Memo", "Name",
             "Qty", "Sales Price", "Amount", "Balance"
         ]
-
+        
+        if len(df_hist.columns) == len(expected_columns):
+            df_hist.columns = expected_columns
+        else:
+            st.warning(f"⚠️ Expected {len(expected_columns)} columns but got {len(df_hist.columns)}. Showing raw data for review.")
+            st.dataframe(df_hist.head())
+            
         st.success("✅ Historical delivery data loaded successfully!")
         st.dataframe(df_hist)
 
