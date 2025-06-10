@@ -129,6 +129,12 @@ if uploaded_file:
             "Type", "Date", "Num", "Memo", "Name",
             "Qty", "Sales Price", "Amount", "Balance"
         ]
+
+        # Safely assign column names if the number of columns matches
+        expected_columns = [
+            "Type", "Date", "Num", "Memo", "Name",
+            "Qty", "Sales Price", "Amount", "Balance"
+        ]
         
         if len(df_hist.columns) == len(expected_columns):
             df_hist.columns = expected_columns
