@@ -15,6 +15,50 @@ client = gspread.authorize(creds)
 spreadsheet = client.open_by_key("1Rej0GZl5Td6nSQiPyrmvHDerH9LhISE0eFWRO8Rl6ZY")
 sheet = spreadsheet.worksheet("Sheet1")
 
+import calendar
+from datetime import date
+import streamlit as st
+
+def draw_calendar(delivery_df):
+    st.subheader("🗓️ Delivery Calendar")
+
+    # Make sure Date is datetime
+    delivery_df["Date"] = pd.to_datetime(delivery_df["Date"], errors="coerce")
+
+    # User selects month and year
+    today = date.today()
+    selected_year = st.selectbox("Select Year", sorted(delivery_df["Date"].dt.year.dropna().unique()), index=0)
+    selected_month = st.selectbox("Select Month", list(calendar.month_name)[1:], index=today.month - 1)
+
+    month_number = list(calendar.month_name).index(selected_month)
+    filtered_df = delivery_df[
+        (delivery_df["Date"].dt.year == selected_year) &
+        (delivery_df["Date"].dt.month == month_number)
+    ]
+
+    # Build day-to-store map
+    day_to_stores = filtered_df.groupby(delivery_df["Date"].dt.day)["Name"].apply(list).to_dict()
+
+    # Draw the calendar
+    st.markdown(f"### {selected_month} {selected_year}")
+    cal = calendar.monthcalendar(selected_year, month_number)
+
+    for week in cal:
+        cols = st.columns(7)
+        for i, day in enumerate(week):
+            if day == 0:
+                cols[i].empty()
+            else:
+                label = f"{day}"
+                if day in day_to_stores:
+                    stores = "\n".join(day_to_stores[day])
+                    cols[i].markdown(f"**{label}** 🟢")
+                    with cols[i].expander("Details"):
+                        for store in day_to_stores[day]:
+                            st.write(f"- {store}")
+                else:
+                    cols[i].markdown(f"{label}")
+
 # --- Function to Calculate Dates ---
 def calculate_delivery_dates(df):
     df['last_delivery_date'] = pd.to_datetime(df['last_delivery_date'], errors='coerce')
@@ -143,22 +187,10 @@ if uploaded_file:
             st.dataframe(df_hist.head())
             
         st.success("✅ Historical delivery data loaded successfully!")
-        st.dataframe(df_hist)
+        draw_calendar(df_hist)
+        #st.dataframe(df_hist)
 
     except Exception as e:
         st.error(f"⚠️ Error loading file: {e}")
 
-    # --- Calendar-Style Timeline Plot ---
-    import plotly.express as px
-    fig = px.timeline(
-        df_hist,
-        x_start="Date",
-        x_end="Date",
-        y="Store",
-        color="Store",
-        title="📅 Delivery History Timeline",
-    )
-    fig.update_yaxes(categoryorder="total ascending")
-    fig.update_layout(height=800)
-    st.plotly_chart(fig, use_container_width=True)
 
