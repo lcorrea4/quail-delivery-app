@@ -101,21 +101,40 @@ st.subheader("📊 Historical Delivery Calendar")
 
 uploaded_file = st.file_uploader("Upload Excel File with Historical Deliveries", type=["xlsx"])
 
+import xlrd  # just in case
+import os
+
+# Upload and parse Excel history
+uploaded_file = st.file_uploader("📤 Upload historical delivery .xlsm file", type=["xlsm"])
+
 if uploaded_file:
-    # Read full Excel into memory
-    df_all = pd.read_excel(uploaded_file, sheet_name="Sheet1", header=None)
+    sheet_name = st.text_input("Enter the sheet name", value="Sheet1")
 
-    # Find start and end rows
-    start_idx = df_all[df_all[2] == "QUAIL EGGS X 10 (QUAIL EGGS X 10)"].index[0] + 1
-    end_idx = df_all[df_all[2] == "Total QUAIL EGGS X 10 (QUAIL EGGS X 10)"].index[0] - 1
+    try:
+        # Read the full Excel file with no headers to find boundaries
+        raw_df = pd.read_excel(uploaded_file, sheet_name=sheet_name, header=None)
 
-    # Subset relevant columns: F, H, J, L, N, P, R, T, V (indices: 5,7,9,...,19)
-    df_hist = df_all.loc[start_idx:end_idx, [2, 5, 7, 9, 11, 13, 15, 17, 19]]
-    df_hist.columns = ["Item" ,"Type", "Date", "Num", "Memo", "Name", "Qty", "Sales Price", "Ammount","Balance"]
-    df_hist["Date"] = pd.to_datetime(df_hist["Date"], errors="coerce")
-    df_hist = df_hist.dropna(subset=["Date", "Store"])
+        # Find the row where the string starts and ends in column C (index 2)
+        start_row = raw_df[2][raw_df[2] == "QUAIL EGGS X 10 (QUAIL EGGS X 10)"].index[0] + 1
+        end_row = raw_df[2][raw_df[2] == "Total QUAIL EGGS X 10 (QUAIL EGGS X 10)"].index[0] - 1
 
-    st.success("✅ Historical data loaded!")
+        # Define Excel columns to keep: F,H,J,L,N,P,R,T,V = indices 5,7,...,21
+        target_cols = [5, 7, 9, 11, 13, 15, 17, 19, 21]
+
+        # Slice the relevant data
+        df_hist = raw_df.loc[start_row:end_row, target_cols].copy()
+
+        # Rename columns for readability (adjust as needed)
+        df_hist.columns = [
+            "Type", "Date", "Num", "Memo", "Name",
+            "Qty", "Sales Price", "Amount", "Balance"
+        ]
+
+        st.success("✅ Historical delivery data loaded successfully!")
+        st.dataframe(df_hist)
+
+    except Exception as e:
+        st.error(f"⚠️ Error loading file: {e}")
 
     # --- Calendar-Style Timeline Plot ---
     import plotly.express as px
