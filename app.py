@@ -199,7 +199,7 @@ if uploaded_file:
         )
         
         # Format for WhatsApp
-        store_list_text = "\n".join(f"- {row['Name']}" for _, row in unique_stores.iterrows())
+        store_list_text = "\n".join(f"- {row['Name']} -" for _, row in unique_stores.iterrows())
         
         # Display in Streamlit
         st.subheader("📋 Copy This List and Send via WhatsApp")
