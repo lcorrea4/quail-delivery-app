@@ -84,11 +84,11 @@ uploaded_file = st.file_uploader("Upload Excel File with Historical Deliveries",
     
 
 if uploaded_file:
-    sheet_name = st.text_input("Enter the sheet name", value="")
+    # sheet_name = st.text_input("Enter the sheet name", value="")
 
     try:
         # Read the full Excel file with no headers to find boundaries
-        raw_df = pd.read_excel(uploaded_file, sheet_name=sheet_name, header=None)
+        raw_df = pd.read_excel(uploaded_file, sheet_name="Sheet1", header=None)
 
         # Find the row where the string starts and ends in column C (index 2)
         start_row = raw_df[2][raw_df[2] == "QUAIL EGGS X 10 (QUAIL EGGS X 10)"].index[0] + 1
