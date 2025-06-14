@@ -375,40 +375,40 @@ if uploaded_file:
 
 
     
-    # 1. Filter historical data to only get the last delivery per store
-    last_deliveries = df_hist.sort_values("Date").groupby("Name", as_index=False).last()
-    
-    # 2. Set up a DataFrame to hold future visits
-    calendar_rows = []
-    
-    # 3. Simulate future delivery dates based on depletion estimate
-    for _, row in last_deliveries.iterrows():
-        store = row["Name"]
-        last_date = pd.to_datetime(row["Date"])
-        days_est = row.get("depletion_days_estimate")
-    
-        # Skip if depletion estimate is missing
-        if pd.isna(days_est):
-            continue
-    
-        visit_date = last_date + timedelta(days=days_est)
-        while visit_date <= pd.Timestamp("2025-07-31"):
-            if visit_date >= pd.Timestamp("2025-06-01"):
-                calendar_rows.append({
-                    "Store": store,
-                    "Visit Date": visit_date.date()
-                })
-            visit_date += timedelta(days=days_est)
-    
-    # 4. Create the calendar DataFrame
-    calendar_df = pd.DataFrame(calendar_rows).sort_values("Visit Date")
-    
-    # Optional: Group by date to see who should be visited each day
-    grouped_calendar = calendar_df.groupby("Visit Date")["Store"].apply(list).reset_index()
-    
-    # Show result
-    st.subheader("📅 Projected Delivery Calendar (June & July)")
-    st.dataframe(grouped_calendar)
+        # 1. Filter historical data to only get the last delivery per store
+        last_deliveries = df_hist.sort_values("Date").groupby("Name", as_index=False).last()
+        
+        # 2. Set up a DataFrame to hold future visits
+        calendar_rows = []
+        
+        # 3. Simulate future delivery dates based on depletion estimate
+        for _, row in last_deliveries.iterrows():
+            store = row["Name"]
+            last_date = pd.to_datetime(row["Date"])
+            days_est = row.get("depletion_days_estimate")
+        
+            # Skip if depletion estimate is missing
+            if pd.isna(days_est):
+                continue
+        
+            visit_date = last_date + timedelta(days=days_est)
+            while visit_date <= pd.Timestamp("2025-07-31"):
+                if visit_date >= pd.Timestamp("2025-06-01"):
+                    calendar_rows.append({
+                        "Store": store,
+                        "Visit Date": visit_date.date()
+                    })
+                visit_date += timedelta(days=days_est)
+        
+        # 4. Create the calendar DataFrame
+        calendar_df = pd.DataFrame(calendar_rows).sort_values("Visit Date")
+        
+        # Optional: Group by date to see who should be visited each day
+        grouped_calendar = calendar_df.groupby("Visit Date")["Store"].apply(list).reset_index()
+        
+        # Show result
+        st.subheader("📅 Projected Delivery Calendar (June & July)")
+        st.dataframe(grouped_calendar)
 
 
     except Exception as e:
