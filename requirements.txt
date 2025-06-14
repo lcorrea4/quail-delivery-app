@@ -5,3 +5,4 @@ oauth2client
 gspread_dataframe
 plotly
 openpyxl
+streamlit-aggrid
