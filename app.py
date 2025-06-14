@@ -388,6 +388,9 @@ if uploaded_file:
         
         # Build final options
         grid_options = gb.build()
+
+        grouped_calendar["Visit Date"] = grouped_calendar["Visit Date"].dt.strftime("%m/%d/%Y")
+
         
         # Display the table
         AgGrid(
