@@ -341,7 +341,19 @@ if uploaded_file:
         
         # Show result
         st.subheader("📅 Projected Delivery Calendar (June & July)")
-        st.dataframe(grouped_calendar)
+        # Build grid options to enable horizontal scroll and column resizing
+        gb = GridOptionsBuilder.from_dataframe(grouped_calendar)
+        gb.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
+        grid_options = gb.build()
+        
+        AgGrid(
+            grouped_calendar,
+            gridOptions=grid_options,
+            fit_columns_on_grid_load=False,
+            height=500,
+            enable_enterprise_modules=False,
+            allow_unsafe_jscode=True
+        )
 
 
     except Exception as e:
