@@ -77,6 +77,8 @@ def get_5day_bucket(date):
     return f"{label} ({date.strftime('%Y')})"
 
 
+st.title("📦 Quality Quail Eggs")
+st.subheader("📅 Upcoming Deliveries:")
 
 
 if uploaded_file:
