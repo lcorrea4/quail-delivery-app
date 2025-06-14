@@ -207,23 +207,25 @@ if uploaded_file:
         df_hist = df_hist.merge(days_df, on="Name", how="left")
 
         st.success("✅ Historical delivery data loaded successfully!")
-        draw_calendar(df_hist)
-        #st.dataframe(df_hist)
 
-        # Extract and sort unique store names
-        unique_stores = (
-            df_hist[["Name"]]
-            .dropna()
-            .drop_duplicates()
-            .sort_values("Name")
-        )
+        st.dataframe(df_hist)
+        # draw_calendar(df_hist)
+        # st.dataframe(df_hist)
+
+        # # Extract and sort unique store names
+        # unique_stores = (
+        #     df_hist[["Name"]]
+        #     .dropna()
+        #     .drop_duplicates()
+        #     .sort_values("Name")
+        # )
         
-        # Format for WhatsApp
-        store_list_text = "\n".join(f"- {row['Name']} -" for _, row in unique_stores.iterrows())
+        # # Format for WhatsApp
+        # store_list_text = "\n".join(f"- {row['Name']} -" for _, row in unique_stores.iterrows())
         
-        # Display in Streamlit
-        st.subheader("📋 Copy This List and Send via WhatsApp")
-        st.text_area("Store List", store_list_text, height=400)
+        # # Display in Streamlit
+        # st.subheader("📋 Copy This List and Send via WhatsApp")
+        # st.text_area("Store List", store_list_text, height=400)
 
     except Exception as e:
         st.error(f"⚠️ Error loading file: {e}")
