@@ -5,7 +5,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from gspread_dataframe import get_as_dataframe, set_with_dataframe
 import json
-from st_aggrid import AgGrid, GridOptionsBuilder
+from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
 # --- Google Sheet Setup ---
 # Define scope and authenticate
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -343,17 +343,62 @@ if uploaded_file:
         # Show result
         st.subheader("📅 Projected Delivery Calendar (June & July)")
         # Build grid options to enable horizontal scroll and column resizing
+        # Build options
         gb = GridOptionsBuilder.from_dataframe(grouped_calendar)
-        gb.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
+        
+        # ✅ Make columns resizable and wrap text
+        gb.configure_default_column(
+            resizable=True,
+            wrapText=True,
+            autoHeight=True,
+            sortable=True,
+            filter=True
+        )
+        
+        # ✅ Adjust "Visit Date" column width and alignment
+        gb.configure_column(
+            "Visit Date",
+            header_name="📅 Visit Date",
+            width=150,
+            cellStyle={"textAlign": "center", "fontWeight": "bold"}
+        )
+        
+        # ✅ Style "Stores" column
+        gb.configure_column(
+            "Stores",
+            header_name="🏪 Stores to Deliver",
+            autoHeight=True,
+            wrapText=True,
+            cellStyle={"whiteSpace": "normal"}
+        )
+        
+        # ✅ Optional: Add zebra striping (row styles)
+        gb.configure_grid_options(
+            domLayout='normal',
+            rowStyle={"background": "#f9f9f9"},
+            getRowStyle=JsCode("""
+                function(params) {
+                    if (params.node.rowIndex % 2 === 0) {
+                        return { 'background': '#ffffff' };
+                    }
+                    return { 'background': '#f1f3f6' };
+                }
+            """)
+        )
+        
+        # Build final options
         grid_options = gb.build()
         
+        # Display the table
         AgGrid(
             grouped_calendar,
             gridOptions=grid_options,
             fit_columns_on_grid_load=False,
-            height=500,
+            height=600,
+            theme="material",  # 🔥 Options: "streamlit", "light", "dark", "blue", "fresh", "material", "balham"
             enable_enterprise_modules=False,
-            allow_unsafe_jscode=True
+            allow_unsafe_jscode=True,
+            reload_data=True
         )
 
 
