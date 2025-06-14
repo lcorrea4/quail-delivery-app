@@ -341,7 +341,7 @@ if uploaded_file:
         
         # Show result
         st.subheader("📅 Projected Delivery Calendar (June & July)")
-        st.dataframe(grouped_calendar, use_container_width=True)
+        st.dataframe(grouped_calendar.T, use_container_width=True)
 
 
     except Exception as e:
