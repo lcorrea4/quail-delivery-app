@@ -185,7 +185,27 @@ if uploaded_file:
         else:
             st.warning(f"⚠️ Expected {len(expected_columns)} columns but got {len(df_hist.columns)}. Showing raw data for review.")
             st.dataframe(df_hist.head())
-            
+        # Raw input as a multiline string (paste your actual list here)
+        raw_store_list = """
+        - Fresco y Mas 201 - 20
+        - Fresco y Mas 231 - 10
+        - Fresco y Mas 235 - 25
+        """
+        
+        # Step 1: Clean and parse
+        store_days = []
+        for line in raw_store_list.strip().splitlines():
+            cleaned = line.lstrip("- ").strip()
+            if " - " in cleaned:
+                store_name, days = cleaned.rsplit(" - ", 1)
+                store_days.append((store_name.strip(), int(days.strip())))
+        
+        # Step 2: Convert to DataFrame
+        days_df = pd.DataFrame(store_days, columns=["Name", "depletion_days_estimate"])
+        
+        # Step 3: Merge into your existing df_hist
+        df_hist = df_hist.merge(days_df, on="Name", how="left")
+
         st.success("✅ Historical delivery data loaded successfully!")
         draw_calendar(df_hist)
         #st.dataframe(df_hist)
