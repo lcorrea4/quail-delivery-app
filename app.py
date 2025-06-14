@@ -389,6 +389,7 @@ if uploaded_file:
         # Build final options
         grid_options = gb.build()
 
+        grouped_calendar["Visit Date"] = pd.to_datetime(grouped_calendar["Visit Date"], errors='coerce')
         grouped_calendar["Visit Date"] = grouped_calendar["Visit Date"].dt.strftime("%m/%d/%Y")
 
         
