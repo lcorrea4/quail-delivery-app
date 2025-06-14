@@ -80,9 +80,11 @@ def get_5day_bucket(date):
 st.title("📦 Quality Quail Eggs")
 st.subheader("📅 Upcoming Deliveries:")
 
+uploaded_file = st.file_uploader("Upload Excel File with Historical Deliveries", type=["xlsx"])
+    
 
 if uploaded_file:
-    sheet_name = st.text_input("Enter the sheet name", value="Sheet1")
+    sheet_name = st.text_input("Enter the sheet name", value="")
 
     try:
         # Read the full Excel file with no headers to find boundaries
