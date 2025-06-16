@@ -77,6 +77,27 @@ def get_5day_bucket(date):
     label = f"{start_date.strftime('%b %d')}–{end_date.strftime('%d')}"
     return f"{label} ({date.strftime('%Y')})"
 
+from datetime import datetime
+
+def get_5day_bucket2(date_val):
+    """
+    Takes a datetime and returns a 5-day bucket string like 'Jun 15 – Jun 19'
+    """
+    if pd.isnull(date_val):
+        return "Unknown"
+
+    # Force date only
+    date_val = pd.to_datetime(date_val).date()
+
+    # Start buckets from June 15, 2025
+    start = datetime(2025, 6, 15).date()
+    days_since_start = (date_val - start).days
+    bucket_start = start + timedelta(days=(days_since_start // 5) * 5)
+    bucket_end = bucket_start + timedelta(days=4)
+
+    return f"{bucket_start.strftime('%b %d')} – {bucket_end.strftime('%b %d')}"
+
+
 st.set_page_config(layout="wide")
 st.title("📦 Quality Quail Eggs")
 st.subheader("📅 Upcoming Deliveries:")
@@ -316,92 +337,106 @@ if uploaded_file:
         
         # 4. Create the calendar DataFrame
         calendar_df = pd.DataFrame(calendar_rows).sort_values("Visit Date")
+
+        calendar_df["Visit Date"] = pd.to_datetime(calendar_df["Visit Date"])
+        calendar_df["5-Day Window"] = calendar_df["Visit Date"].apply(get_5day_bucket2)
+
+        st.subheader("📅 Upcoming Deliveries: 5-Day Agenda View")
         
-        grouped_calendar = calendar_df.groupby("Visit Date")["Store"].apply(list).reset_index()
-        grouped_calendar.rename(columns={"Store": "Stores"}, inplace=True)
+        # Group by the new 5-day window
+        grouped = calendar_df.groupby("5-Day Window")
+        
+        if grouped.ngroups == 0:
+            st.write("No upcoming deliveries found.")
+        else:
+            for group_label, items in grouped:
+                st.markdown(f"### 📌 {group_label}")
+                agenda_table = items[["Store", "Visit Date"]].copy()
+                agenda_table["Visit Date"] = agenda_table["Visit Date"].dt.strftime("%m/%d/%Y")
+                st.dataframe(agenda_table, use_container_width=True)
 
         # Show result
-        st.subheader("📅 Projected Delivery Calendar (June & July)")
-        # Build grid options to enable horizontal scroll and column resizing
-        # Build options
-        gb = GridOptionsBuilder.from_dataframe(grouped_calendar)
+        # st.subheader("📅 Projected Delivery Calendar (June & July)")
+        # # Build grid options to enable horizontal scroll and column resizing
+        # # Build options
+        # gb = GridOptionsBuilder.from_dataframe(grouped_calendar)
         
-        # ✅ Make columns resizable and wrap text
-        gb.configure_default_column(
-            resizable=True,
-            wrapText=True,
-            autoHeight=True,
-            sortable=True,
-            filter=True
-        )
+        # # ✅ Make columns resizable and wrap text
+        # gb.configure_default_column(
+        #     resizable=True,
+        #     wrapText=True,
+        #     autoHeight=True,
+        #     sortable=True,
+        #     filter=True
+        # )
         
-        # ✅ Adjust "Visit Date" column width and alignment
-        gb.configure_column(
-            "Visit Date",
-            header_name="📅 Visit Date",
-            width=150,
-            cellStyle={"textAlign": "center", "fontWeight": "bold"}
-        )
+        # # ✅ Adjust "Visit Date" column width and alignment
+        # gb.configure_column(
+        #     "Visit Date",
+        #     header_name="📅 Visit Date",
+        #     width=150,
+        #     cellStyle={"textAlign": "center", "fontWeight": "bold"}
+        # )
         
-        # ✅ Style "Stores" column
-        gb.configure_column(
-            "Stores",
-            #header_name="🏪 Stores to Deliver",
-            autoHeight=True,
-            wrapText=True,
-            cellStyle={"whiteSpace": "normal"}
-        )
+        # # ✅ Style "Stores" column
+        # gb.configure_column(
+        #     "Stores",
+        #     #header_name="🏪 Stores to Deliver",
+        #     autoHeight=True,
+        #     wrapText=True,
+        #     cellStyle={"whiteSpace": "normal"}
+        # )
         
-        # ✅ Optional: Add zebra striping (row styles)
-        gb.configure_grid_options(
-            domLayout='normal',
-            rowStyle={"background": "#f9f9f9"},
-            getRowStyle=JsCode("""
-                function(params) {
-                    if (params.node.rowIndex % 2 === 0) {
-                        return { 'background': '#ffffff' };
-                    }
-                    return { 'background': '#f1f3f6' };
-                }
-            """)
-        )
+        # # ✅ Optional: Add zebra striping (row styles)
+        # gb.configure_grid_options(
+        #     domLayout='normal',
+        #     rowStyle={"background": "#f9f9f9"},
+        #     getRowStyle=JsCode("""
+        #         function(params) {
+        #             if (params.node.rowIndex % 2 === 0) {
+        #                 return { 'background': '#ffffff' };
+        #             }
+        #             return { 'background': '#f1f3f6' };
+        #         }
+        #     """)
+        # )
         
-        # Build final options
-        grid_options = gb.build()
+        # # Build final options
+        # grid_options = gb.build()
 
-        # 1. Convert Visit Date to datetime first (ensure it's a datetime object)
-        grouped_calendar["Visit Date"] = pd.to_datetime(grouped_calendar["Visit Date"], errors='coerce')
+        # # 1. Convert Visit Date to datetime first (ensure it's a datetime object)
+        # grouped_calendar["Visit Date"] = pd.to_datetime(grouped_calendar["Visit Date"], errors='coerce')
         
-        # 2. Define today and the 5-day window
-        today = pd.to_datetime(date.today())  # ensure this is also datetime, not just date
-        end_date = today + timedelta(days=4)
+        # # 2. Define today and the 5-day window
+        # today = pd.to_datetime(date.today())  # ensure this is also datetime, not just date
+        # end_date = today + timedelta(days=4)
         
-        # 3. Filter for the 5-day agenda view (correct types used)
-        agenda_calendar = grouped_calendar[
-            (grouped_calendar["Visit Date"] >= today) &
-            (grouped_calendar["Visit Date"] <= end_date)
-        ].copy()
+        # # 3. Filter for the 5-day agenda view (correct types used)
+        # agenda_calendar = grouped_calendar[
+        #     (grouped_calendar["Visit Date"] >= today) &
+        #     (grouped_calendar["Visit Date"] <= end_date)
+        # ].copy()
         
-        # 4. Format Visit Date for display (AFTER filtering)
-        agenda_calendar["Visit Date"] = agenda_calendar["Visit Date"].dt.strftime("%m/%d/%Y")
+        # # 4. Format Visit Date for display (AFTER filtering)
+        # agenda_calendar["Visit Date"] = agenda_calendar["Visit Date"].dt.strftime("%m/%d/%Y")
         
-        # 5. (Optional) Add Day of the Week
-        agenda_calendar["Day"] = pd.to_datetime(agenda_calendar["Visit Date"], format="%m/%d/%Y").dt.strftime("%A")
+        # # 5. (Optional) Add Day of the Week
+        # agenda_calendar["Day"] = pd.to_datetime(agenda_calendar["Visit Date"], format="%m/%d/%Y").dt.strftime("%A")
         
-        # 6. Reorder columns if you want
-        agenda_calendar = agenda_calendar[["Day", "Visit Date", "Stores"]]
+        # # 6. Reorder columns if you want
+        # agenda_calendar = agenda_calendar[["Day", "Visit Date", "Stores"]]
         
-        # 7. Display the 5-day agenda in AgGrid
-        AgGrid(
-            agenda_calendar,
-            gridOptions=grid_options,
-            fit_columns_on_grid_load=False,
-            height=600,
-            theme="material",
-            enable_enterprise_modules=False,
-            allow_unsafe_jscode=True,
-            reload_data=True
-        )
+        # # 7. Display the 5-day agenda in AgGrid
+        # AgGrid(
+        #     agenda_calendar,
+        #     gridOptions=grid_options,
+        #     fit_columns_on_grid_load=False,
+        #     height=600,
+        #     theme="material",
+        #     enable_enterprise_modules=False,
+        #     allow_unsafe_jscode=True,
+        #     reload_data=True
+        # )
 
 
 
