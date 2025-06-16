@@ -371,6 +371,22 @@ def normalize_store(name):
 
 df_sheet["store_group"] = df_sheet["Name"].apply(normalize_store)
 
+def abbreviate_store_name(name):
+    if pd.isna(name):
+        return name
+    name = name.strip().lower()
+    if "publix" in name:
+        return "P " + name.replace("publix", "").strip().title()
+    elif "sedano" in name:
+        return "S " + name.replace("sedano's", "").replace("sedanos", "").strip().title()
+    elif "fresco" in name:
+        return "F " + name.replace("fresco y mas", "").strip().title()
+    else:
+        return name.title()
+
+df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
+
+
 # --- Build 5-day agenda DataFrame ---
 agenda_data = []
 for bucket_date, group in df_sheet.groupby("bucket_date"):
@@ -397,6 +413,8 @@ def wrap_text_after_n_commas(text, limit=8):
 for col in ["Publix", "Sedano's", "Fresco y Mas"]:
     if col in agenda_df.columns:
         agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
+
+
 
 # Convert DataFrame to HTML
 agenda_html = agenda_df.to_html(escape=False, index=False)
