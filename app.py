@@ -103,54 +103,6 @@ sheet = spreadsheet.worksheet("Sheet1")
 
 st.title("🥚 Quail Egg Delivery Manager")
 
-# --- Visit Date & 5-Day Bucket Agenda ---
-
-# Step 1: Calculate Visit Date
-df_sheet["Visit Date"] = pd.to_datetime(df_sheet["Date"]) + pd.to_timedelta(df_sheet["depletion_days_estimate"], unit="D")
-
-# Step 2: Calculate 5-Day Bucket Start Date
-def get_bucket_start(date):
-    if pd.isnull(date):
-        return None
-    day = date.day
-    bucket_day = ((day - 1) // 5) * 5 + 1
-    return date.replace(day=bucket_day)
-
-df_sheet["Bucket Start"] = df_sheet["Visit Date"].apply(get_bucket_start)
-
-# Step 3: Normalize store names
-def normalize_store(name):
-    if pd.isnull(name):
-        return ""
-    name = name.strip().lower()
-    if "publix" in name:
-        return "publix"
-    elif "sedano" in name:
-        return "sedano"
-    elif "fresco" in name:
-        return "fresco y mas"
-    else:
-        return "other"
-
-df_sheet["Store Group"] = df_sheet["Name"].apply(normalize_store)
-
-# Step 4: Build 5-Day Agenda Table
-agenda_rows = []
-for bucket_date, group in df_sheet.groupby("Bucket Start"):
-    row = {
-        "5-day-bucket-date": bucket_date.strftime("%Y-%m-%d") if pd.notnull(bucket_date) else "",
-        "publix": ", ".join(sorted(group[group["Store Group"] == "publix"]["Name"].dropna().unique())),
-        "sedano": ", ".join(sorted(group[group["Store Group"] == "sedano"]["Name"].dropna().unique())),
-        "fresco y mas": ", ".join(sorted(group[group["Store Group"] == "fresco y mas"]["Name"].dropna().unique()))
-    }
-    agenda_rows.append(row)
-
-agenda_df = pd.DataFrame(agenda_rows).sort_values("5-day-bucket-date")
-
-# Step 5: Display in Streamlit
-st.subheader("🗓️ 5-Day Bucket Agenda Table")
-st.dataframe(agenda_df, use_container_width=True)
-
 
 with st.expander("📤 Upload Excel File", expanded=False):
     uploaded_file = st.file_uploader("Upload your Excel File", type=["xlsx"])
@@ -351,6 +303,54 @@ with st.expander("📄 View Current Google Sheet Data", expanded=False):
             st.info("ℹ️ Google Sheet is currently empty.")
     except Exception as e:
         st.error(f"❌ Error loading Google Sheet: {e}")
+
+# --- Visit Date & 5-Day Bucket Agenda ---
+
+# Step 1: Calculate Visit Date
+df_sheet["Visit Date"] = pd.to_datetime(df_sheet["Date"]) + pd.to_timedelta(df_sheet["depletion_days_estimate"], unit="D")
+
+# Step 2: Calculate 5-Day Bucket Start Date
+def get_bucket_start(date):
+    if pd.isnull(date):
+        return None
+    day = date.day
+    bucket_day = ((day - 1) // 5) * 5 + 1
+    return date.replace(day=bucket_day)
+
+df_sheet["Bucket Start"] = df_sheet["Visit Date"].apply(get_bucket_start)
+
+# Step 3: Normalize store names
+def normalize_store(name):
+    if pd.isnull(name):
+        return ""
+    name = name.strip().lower()
+    if "publix" in name:
+        return "publix"
+    elif "sedano" in name:
+        return "sedano"
+    elif "fresco" in name:
+        return "fresco y mas"
+    else:
+        return "other"
+
+df_sheet["Store Group"] = df_sheet["Name"].apply(normalize_store)
+
+# Step 4: Build 5-Day Agenda Table
+agenda_rows = []
+for bucket_date, group in df_sheet.groupby("Bucket Start"):
+    row = {
+        "5-day-bucket-date": bucket_date.strftime("%Y-%m-%d") if pd.notnull(bucket_date) else "",
+        "publix": ", ".join(sorted(group[group["Store Group"] == "publix"]["Name"].dropna().unique())),
+        "sedano": ", ".join(sorted(group[group["Store Group"] == "sedano"]["Name"].dropna().unique())),
+        "fresco y mas": ", ".join(sorted(group[group["Store Group"] == "fresco y mas"]["Name"].dropna().unique()))
+    }
+    agenda_rows.append(row)
+
+agenda_df = pd.DataFrame(agenda_rows).sort_values("5-day-bucket-date")
+
+# Step 5: Display in Streamlit
+st.subheader("🗓️ 5-Day Bucket Agenda Table")
+st.dataframe(agenda_df, use_container_width=True)
 
 
 # st.set_page_config(layout="wide")
