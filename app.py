@@ -408,7 +408,7 @@ if uploaded_file:
         # Display the table
         with st.container():
             AgGrid(
-                grouped_calendar,
+                agenda_calendar,
                 gridOptions=grid_options,
                 fit_columns_on_grid_load=False,
                 height=600,
