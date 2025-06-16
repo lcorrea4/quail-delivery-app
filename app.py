@@ -293,54 +293,56 @@ if uploaded_file:
 
         st.success("✅ Historical delivery data loaded successfully!")
 
-        # --- Generate future delivery dates ---
-        last_deliveries = df_hist.sort_values("Date").groupby("Name", as_index=False).last()
+        df_hist.head()
 
-        calendar_rows = []
-        for _, row in last_deliveries.iterrows():
-            store = row["Name"]
-            last_date = pd.to_datetime(row["Date"])
-            days_est = row.get("depletion_days_estimate")
-            if pd.isna(days_est):
-                continue
-            visit_date = last_date + timedelta(days=days_est)
-            while visit_date <= pd.Timestamp("2025-07-31"):
-                if visit_date >= pd.Timestamp("2025-06-01"):
-                    calendar_rows.append({
-                        "Store": store,
-                        "Visit Date": visit_date.date()
-                    })
-                visit_date += timedelta(days=days_est)
+        # # --- Generate future delivery dates ---
+        # last_deliveries = df_hist.sort_values("Date").groupby("Name", as_index=False).last()
 
-        calendar_df = pd.DataFrame(calendar_rows).sort_values("Visit Date")
-        calendar_df["Visit Date"] = pd.to_datetime(calendar_df["Visit Date"])
+        # calendar_rows = []
+        # for _, row in last_deliveries.iterrows():
+        #     store = row["Name"]
+        #     last_date = pd.to_datetime(row["Date"])
+        #     days_est = row.get("depletion_days_estimate")
+        #     if pd.isna(days_est):
+        #         continue
+        #     visit_date = last_date + timedelta(days=days_est)
+        #     while visit_date <= pd.Timestamp("2025-07-31"):
+        #         if visit_date >= pd.Timestamp("2025-06-01"):
+        #             calendar_rows.append({
+        #                 "Store": store,
+        #                 "Visit Date": visit_date.date()
+        #             })
+        #         visit_date += timedelta(days=days_est)
 
-        # --- Prepare for calendar drawing ---
-        # Rename columns to match draw_calendar signature
-        calendar_df.rename(columns={"Visit Date": "Date", "Store": "Name"}, inplace=True)
+        # calendar_df = pd.DataFrame(calendar_rows).sort_values("Visit Date")
+        # calendar_df["Visit Date"] = pd.to_datetime(calendar_df["Visit Date"])
 
-        # Draw calendar view
-        draw_calendar(calendar_df)
+        # # --- Prepare for calendar drawing ---
+        # # Rename columns to match draw_calendar signature
+        # calendar_df.rename(columns={"Visit Date": "Date", "Store": "Name"}, inplace=True)
 
-        # --- Prepare 5-Day Bucket agenda view ---
-        calendar_df[["bucket_start", "5-Day Window"]] = calendar_df["Date"].apply(
-            lambda d: pd.Series(get_5day_bucket(d))
-        )
-        calendar_df = calendar_df[calendar_df["bucket_start"] >= date.today()]
+        # # Draw calendar view
+        # draw_calendar(calendar_df)
 
-        st.subheader("📅 Upcoming Deliveries: 5-Day Agenda View")
+        # # --- Prepare 5-Day Bucket agenda view ---
+        # calendar_df[["bucket_start", "5-Day Window"]] = calendar_df["Date"].apply(
+        #     lambda d: pd.Series(get_5day_bucket(d))
+        # )
+        # calendar_df = calendar_df[calendar_df["bucket_start"] >= date.today()]
 
-        grouped = calendar_df.groupby(["bucket_start", "5-Day Window"])
+        # st.subheader("📅 Upcoming Deliveries: 5-Day Agenda View")
 
-        if grouped.ngroups == 0:
-            st.write("No upcoming deliveries found.")
-        else:
-            sorted_groups = sorted(grouped, key=lambda x: x[0])
-            for (bucket_start, group_label), items in sorted_groups:
-                st.markdown(f"### 📌 {group_label}")
-                agenda_table = items[["Name", "Date"]].copy()
-                agenda_table["Date"] = agenda_table["Date"].dt.strftime("%m/%d/%Y")
-                st.dataframe(agenda_table.rename(columns={"Name": "Store", "Date": "Visit Date"}), use_container_width=True)
+        # grouped = calendar_df.groupby(["bucket_start", "5-Day Window"])
+
+        # if grouped.ngroups == 0:
+        #     st.write("No upcoming deliveries found.")
+        # else:
+        #     sorted_groups = sorted(grouped, key=lambda x: x[0])
+        #     for (bucket_start, group_label), items in sorted_groups:
+        #         st.markdown(f"### 📌 {group_label}")
+        #         agenda_table = items[["Name", "Date"]].copy()
+        #         agenda_table["Date"] = agenda_table["Date"].dt.strftime("%m/%d/%Y")
+        #         st.dataframe(agenda_table.rename(columns={"Name": "Store", "Date": "Visit Date"}), use_container_width=True)
 
   
     except Exception as e:
