@@ -307,6 +307,32 @@ with st.expander("📄 View Current Google Sheet Data", expanded=False):
     except Exception as e:
         st.error(f"❌ Error loading Google Sheet: {e}")
 
+# Text input for store numbers
+completed_input = st.text_input("Enter completed store numbers (comma-separated):")
+
+# Save button
+if st.button("Save Completed Stores"):
+    nums_to_save = [num.strip() for num in completed_input.split(",") if num.strip()]
+    sheet_completed.clear()
+    if nums_to_save:
+        sheet_completed.append_row(nums_to_save)
+    st.success("Completed store numbers saved!")
+
+# Load completed store numbers from "Completed" sheet
+try:
+    completed_vals = sheet_completed.get_all_values()
+    completed_set = set()
+    if completed_vals:
+        for row in completed_vals:
+            for item in row:
+                if item.strip():
+                    completed_set.add(item.strip())
+    else:
+        completed_set = set()
+except Exception as e:
+    st.error(f"Error loading completed stores: {e}")
+    completed_set = set()
+
 
 # --- Visit Date & 5-Day Bucket Agenda ---
 
@@ -413,6 +439,24 @@ def wrap_text_after_n_commas(text, limit=8):
 for col in ["Publix", "Sedano's", "Fresco y Mas"]:
     if col in agenda_df.columns:
         agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
+
+# --- Cross Out Completed Stores ---
+def cross_out_stores(store_list, completed_nums):
+    stores = store_list.split(", ")
+    updated_stores = []
+    for store in stores:
+        if any(store.endswith(num) for num in completed_nums):
+            updated_stores.append(f"~~{store}~~")
+        else:
+            updated_stores.append(store)
+    return ", ".join(updated_stores)
+
+# Apply to agenda before rendering
+agenda_df = agenda_df.copy()
+for col in ["P", "S", "F"]:
+    agenda_df[col] = agenda_df[col].apply(
+        lambda x: cross_out_stores(x, completed_set) if pd.notnull(x) else x
+    )
 
 
 
