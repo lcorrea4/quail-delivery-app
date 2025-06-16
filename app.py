@@ -474,15 +474,16 @@ def cross_out_stores(cell_value, completed_ids):
     for name in parts:
         name = name.strip()
         if any(name.endswith(store_id.strip()) for store_id in completed_ids):
-            crossed_parts.append(apply_unicode_strikethrough(name))
+            crossed_parts.append(f"<span style='color: gray;'>❌ {name}</span>")
         else:
             crossed_parts.append(name)
 
-    # Wrap after every 8 stores
+    # Wrap every 8 entries with line breaks
     wrapped = []
     for i in range(0, len(crossed_parts), 8):
         wrapped.append(", ".join(crossed_parts[i:i+8]))
     return "<br>".join(wrapped)
+
 
 
 
