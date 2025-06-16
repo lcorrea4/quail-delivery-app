@@ -77,25 +77,31 @@ def get_5day_bucket(date):
     label = f"{start_date.strftime('%b %d')}–{end_date.strftime('%d')}"
     return f"{label} ({date.strftime('%Y')})"
 
-from datetime import datetime
-
 def get_5day_bucket2(date_val):
     """
-    Takes a datetime and returns a 5-day bucket string like 'Jun 15 – Jun 19'
+    Takes a datetime and returns a tuple (bucket_start_date, bucket_label)
+    bucket_start_date = datetime.date used for sorting
+    bucket_label = string like 'Jun 15 – Jun 19'
     """
     if pd.isnull(date_val):
-        return "Unknown"
+        return (None, "Unknown")
 
     # Force date only
     date_val = pd.to_datetime(date_val).date()
 
-    # Start buckets from June 15, 2025
-    start = datetime(2025, 6, 15).date()
+    # Start buckets from June 15, 2025 (adjust if you want dynamic start)
+    start = date.today()  # Use today's date as rolling start
     days_since_start = (date_val - start).days
-    bucket_start = start + timedelta(days=(days_since_start // 5) * 5)
-    bucket_end = bucket_start + timedelta(days=4)
+    if days_since_start < 0:
+        # If date is before today, just assign to today's bucket
+        bucket_start = start
+    else:
+        bucket_start = start + timedelta(days=(days_since_start // 5) * 5)
 
-    return f"{bucket_start.strftime('%b %d')} – {bucket_end.strftime('%b %d')}"
+    bucket_end = bucket_start + timedelta(days=4)
+    bucket_label = f"{bucket_start.strftime('%b %d')} – {bucket_end.strftime('%b %d')}"
+
+    return (bucket_start, bucket_label)
 
 
 st.set_page_config(layout="wide")
@@ -338,23 +344,33 @@ if uploaded_file:
         # 4. Create the calendar DataFrame
         calendar_df = pd.DataFrame(calendar_rows).sort_values("Visit Date")
 
+# Apply bucket grouping columns
         calendar_df["Visit Date"] = pd.to_datetime(calendar_df["Visit Date"])
-        calendar_df["5-Day Window"] = calendar_df["Visit Date"].apply(get_5day_bucket2)
+        calendar_df[["bucket_start", "5-Day Window"]] = calendar_df["Visit Date"].apply(
+            lambda d: pd.Series(get_5day_bucket(d))
+        )
+
+        # Filter for buckets from today onward
+        calendar_df = calendar_df[calendar_df["bucket_start"] >= date.today()]
 
         st.subheader("📅 Upcoming Deliveries: 5-Day Agenda View")
-        
-        # Group by the new 5-day window
-        grouped = calendar_df.groupby("5-Day Window")
-        
+
+        # Group by bucket_start for sorting and 5-Day Window for label
+        grouped = calendar_df.groupby(["bucket_start", "5-Day Window"])
+
         if grouped.ngroups == 0:
             st.write("No upcoming deliveries found.")
         else:
-            for group_label, items in grouped:
+            # Sort groups by bucket_start
+            sorted_groups = sorted(grouped, key=lambda x: x[0])
+
+            for (bucket_start, group_label), items in sorted_groups:
                 st.markdown(f"### 📌 {group_label}")
                 agenda_table = items[["Store", "Visit Date"]].copy()
                 agenda_table["Visit Date"] = agenda_table["Visit Date"].dt.strftime("%m/%d/%Y")
                 st.dataframe(agenda_table, use_container_width=True)
 
+    
         # Show result
         # st.subheader("📅 Projected Delivery Calendar (June & July)")
         # # Build grid options to enable horizontal scroll and column resizing
