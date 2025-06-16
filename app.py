@@ -416,6 +416,10 @@ def wrap_text_after_n_commas(text, limit=8):
         wrapped.append(", ".join(items[i:i+limit]))
     return "<br>".join(wrapped)
 
+def apply_unicode_strikethrough(text):
+    return ''.join(char + '\u0336' for char in text)
+
+
 
 df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
 
@@ -470,7 +474,7 @@ def cross_out_stores(cell_value, completed_ids):
     for name in parts:
         name = name.strip()
         if any(name.endswith(store_id.strip()) for store_id in completed_ids):
-            crossed_parts.append(f"~~{name}~~")  # Markdown strikethrough
+            crossed_parts.append(apply_unicode_strikethrough(name))
         else:
             crossed_parts.append(name)
 
@@ -479,6 +483,7 @@ def cross_out_stores(cell_value, completed_ids):
     for i in range(0, len(crossed_parts), 8):
         wrapped.append(", ".join(crossed_parts[i:i+8]))
     return "<br>".join(wrapped)
+
 
 
 # --- Apply wrapping and crossing out ---
