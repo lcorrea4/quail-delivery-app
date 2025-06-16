@@ -102,9 +102,31 @@ client = gspread.authorize(creds)
 spreadsheet = client.open_by_key("1Rej0GZl5Td6nSQiPyrmvHDerH9LhISE0eFWRO8Rl6ZY")
 sheet = spreadsheet.worksheet("Sheet1")
 
+# Create a second worksheet to track completed store numbers
+try:
+    sheet_completed = spreadsheet.worksheet("Completed")
+except gspread.exceptions.WorksheetNotFound:
+    sheet_completed = spreadsheet.add_worksheet(title="Completed", rows="100", cols="20")
+
+
 st.set_page_config(layout="wide")
 
 st.title("🥚 Quail Egg Delivery Manager")
+
+# Load completed store numbers
+try:
+    completed_vals = sheet_completed.get_all_values()
+    completed_set = set()
+    if completed_vals:
+        for row in completed_vals:
+            for item in row:
+                if item.strip():
+                    completed_set.add(item.strip())
+    else:
+        completed_set = set()
+except Exception as e:
+    st.error(f"Error loading completed stores: {e}")
+    completed_set = set()
 
 
 with st.expander("📤 Upload Excel File", expanded=False):
@@ -401,6 +423,17 @@ for bucket_date, group in df_sheet.groupby("bucket_date"):
 
 agenda_df = pd.DataFrame(agenda_data)
 
+# Input: Save completed store numbers
+completed_input = st.text_input("✅ Enter completed store numbers (comma-separated):")
+
+if st.button("Save Completed Stores"):
+    nums_to_save = [num.strip() for num in completed_input.split(",") if num.strip()]
+    sheet_completed.clear()
+    if nums_to_save:
+        sheet_completed.append_row(nums_to_save)
+    st.success("Completed store numbers saved!")
+
+
 def wrap_text_after_n_commas(text, limit=8):
     if pd.isna(text) or not isinstance(text, str):
         return text
@@ -415,6 +448,23 @@ for col in ["Publix", "Sedano's", "Fresco y Mas"]:
     if col in agenda_df.columns:
         agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
 
+# Cross out completed stores in the agenda
+def cross_out_stores(store_list, completed_nums):
+    if pd.isna(store_list):
+        return store_list
+    stores = store_list.split(", ")
+    updated_stores = []
+    for store in stores:
+        if any(store.endswith(num) for num in completed_nums):
+            updated_stores.append(f"~~{store}~~")
+        else:
+            updated_stores.append(store)
+    return ", ".join(updated_stores)
+
+# Apply the cross-out logic to each store group column
+for col in ["Publix", "Sedanos", "Fresco y Mas"]:
+    if col in agenda_df.columns:
+        agenda_df[col] = agenda_df[col].apply(lambda x: cross_out_stores(x, completed_set))
 
 
 # Convert DataFrame to HTML
