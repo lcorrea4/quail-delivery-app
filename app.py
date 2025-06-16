@@ -317,9 +317,9 @@ if uploaded_file:
         # 4. Create the calendar DataFrame
         calendar_df = pd.DataFrame(calendar_rows).sort_values("Visit Date")
         
-        # Optional: Group by date to see who should be visited each day
         grouped_calendar = calendar_df.groupby("Visit Date")["Store"].apply(list).reset_index()
-        
+        grouped_calendar.rename(columns={"Store": "Stores"}, inplace=True)
+
         # Show result
         st.subheader("📅 Projected Delivery Calendar (June & July)")
         # Build grid options to enable horizontal scroll and column resizing
@@ -389,7 +389,7 @@ if uploaded_file:
         agenda_calendar["Day"] = pd.to_datetime(agenda_calendar["Visit Date"], format="%m/%d/%Y").dt.strftime("%A")
         
         # 6. Reorder columns if you want
-        agenda_calendar = agenda_calendar[["Day", "Visit Date", "Store"]]
+        agenda_calendar = agenda_calendar[["Day", "Visit Date", "Stores"]]
         
         # 7. Display the 5-day agenda in AgGrid
         AgGrid(
