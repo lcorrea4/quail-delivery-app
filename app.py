@@ -402,6 +402,22 @@ try:
     completed_ids = completed_df["store_id"].astype(str).str.strip().tolist()
 except Exception:
     completed_ids = []
+
+# Abbreviate completed store names to match df_sheet["Name"]
+def abbreviate_completed_id(store_id):
+    store_id = store_id.strip().lower()
+    if store_id.startswith("publix"):
+        return "P " + store_id.replace("publix", "").strip().title()
+    elif store_id.startswith("sedano") or store_id.startswith("sedano's"):
+        return "S " + store_id.replace("sedano's", "").replace("sedanos", "").strip().title()
+    elif store_id.startswith("fresco"):
+        return "F " + store_id.replace("fresco y mas", "").strip().title()
+    else:
+        return store_id.title()
+
+# Normalize all completed IDs
+completed_ids = [abbreviate_completed_id(x) for x in completed_ids]
+
     
 df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
 
