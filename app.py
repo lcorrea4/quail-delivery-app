@@ -407,6 +407,16 @@ def abbreviate_store_name(name):
     else:
         return name.title()
 
+def wrap_text_after_n_commas(text, limit=8):
+    if pd.isna(text) or not isinstance(text, str):
+        return text
+    items = [item.strip() for item in text.split(",")]
+    wrapped = []
+    for i in range(0, len(items), limit):
+        wrapped.append(", ".join(items[i:i+limit]))
+    return "<br>".join(wrapped)
+
+
 df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
 
 
