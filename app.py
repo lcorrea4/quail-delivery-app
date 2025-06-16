@@ -361,6 +361,20 @@ for bucket_date, group in df_sheet.groupby("bucket_date"):
 
 agenda_df = pd.DataFrame(agenda_data)
 
+def wrap_text_after_n_commas(text, limit=8):
+    if pd.isna(text) or not isinstance(text, str):
+        return text
+    items = [item.strip() for item in text.split(",")]
+    wrapped = []
+    for i in range(0, len(items), limit):
+        wrapped.append(", ".join(items[i:i+limit]))
+    return "\n".join(wrapped)
+
+# Apply to each store column
+for col in ["Publix", "Sedano's", "Fresco y Mas"]:
+    agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
+
+
 # Step 5: Display in Streamlit
 st.subheader("🗓️ 5-Day Bucket Agenda Table")
 st.dataframe(agenda_df, use_container_width=True)
