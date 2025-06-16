@@ -398,8 +398,8 @@ if uploaded_file:
         
         # Filter the calendar to only show a 5-day rolling window
         agenda_calendar = grouped_calendar[
-            (grouped_calendar["Visit Date"] >= today) &
-            (grouped_calendar["Visit Date"] <= end_date)
+            (grouped_calendar["Visit Date"].dt.date >= today) &
+            (grouped_calendar["Visit Date"].dt.date <= end_date)
         ]
         
         # Display the table
