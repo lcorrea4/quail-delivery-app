@@ -293,7 +293,7 @@ if uploaded_file:
 
         st.success("✅ Historical delivery data loaded successfully!")
 
-        st.df_hist.head()
+        st.dataframe(df_hist)
 
         # # --- Generate future delivery dates ---
         # last_deliveries = df_hist.sort_values("Date").groupby("Name", as_index=False).last()
