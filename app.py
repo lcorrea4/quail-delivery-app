@@ -367,7 +367,9 @@ def get_bucket_date(visit_date):
 
 # --- Handle completed store numbers ---
 completed_input = st.text_input("Enter completed store numbers (comma-separated):")
-if completed_input:
+
+
+if st.button("💾 Save Completed Stores"):
     completed_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
     try:
         # Access or create "Completed" sheet
