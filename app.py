@@ -309,8 +309,8 @@ with st.expander("📄 View Current Google Sheet Data", expanded=False):
 # --- Visit Date & 5-Day Bucket Agenda ---
 
 # --- Compute Visit Date ---
-df_hist["Date"] = pd.to_datetime(df_hist["Date"], errors="coerce")
-df_hist["Visit Date"] = df_hist["Date"] + pd.to_timedelta(df_hist["depletion_days_estimate"], unit="D")
+df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
+df_sheet["Visit Date"] = df_sheet["Date"] + pd.to_timedelta(df_sheet["depletion_days_estimate"], unit="D")
 
 # --- Create 5-day bucket based on multiples of 5 ---
 def get_bucket_date(visit_date):
@@ -318,12 +318,11 @@ def get_bucket_date(visit_date):
     bucket_day = ((day - 1) // 5) * 5 + 5
     return visit_date.replace(day=bucket_day)
 
-df_hist["bucket_date"] = df_hist["Visit Date"].apply(get_bucket_date)
+df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
 
 # --- Filter future or current buckets only ---
 today = pd.to_datetime(datetime.today().date())
-df_hist = df_hist[df_hist["bucket_date"] >= today]
-
+df_sheet = df_sheet[df_sheet["bucket_date"] >= today]
 
 # --- Normalize store names for grouping ---
 def normalize_store(name):
@@ -339,11 +338,11 @@ def normalize_store(name):
     else:
         return "Other"
 
-df_hist["store_group"] = df_hist["Name"].apply(normalize_store)
+df_sheet["store_group"] = df_sheet["Name"].apply(normalize_store)
 
 # --- Build 5-day agenda DataFrame ---
 agenda_data = []
-for bucket_date, group in df_hist.groupby("bucket_date"):
+for bucket_date, group in df_sheet.groupby("bucket_date"):
     row = {
         "5-day-bucket-date": bucket_date.strftime("%-m/%-d"),  # e.g. 6/15
         "Publix": ", ".join(group[group["store_group"] == "Publix"]["Name"].unique()),
