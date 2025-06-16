@@ -390,7 +390,7 @@ if uploaded_file:
         grid_options = gb.build()
 
         grouped_calendar["Visit Date"] = pd.to_datetime(grouped_calendar["Visit Date"], errors='coerce')
-        grouped_calendar["Visit Date"] = grouped_calendar["Visit Date"].dt.strftime("%m/%d/%Y")
+        #grouped_calendar["Visit Date"] = grouped_calendar["Visit Date"].dt.strftime("%m/%d/%Y")
 
         # Define today's date and the range end
         today = date.today()
@@ -401,6 +401,9 @@ if uploaded_file:
             (grouped_calendar["Visit Date"].dt.date >= today) &
             (grouped_calendar["Visit Date"].dt.date <= end_date)
         ]
+
+        # Step 3: Format to MM/DD/YYYY only AFTER filtering (for display)
+        agenda_calendar["Visit Date"] = agenda_calendar["Visit Date"].dt.strftime("%m/%d/%Y")
         
         # Display the table
         with st.container():
