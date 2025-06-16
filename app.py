@@ -101,6 +101,8 @@ client = gspread.authorize(creds)
 spreadsheet = client.open_by_key("1Rej0GZl5Td6nSQiPyrmvHDerH9LhISE0eFWRO8Rl6ZY")
 sheet = spreadsheet.worksheet("Sheet1")
 
+st.set_page_config(layout="wide")
+
 st.title("🥚 Quail Egg Delivery Manager")
 
 
