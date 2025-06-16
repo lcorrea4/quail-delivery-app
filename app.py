@@ -449,17 +449,14 @@ for col in ["Publix", "Sedano's", "Fresco y Mas"]:
         agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
 
 # Cross out completed stores in the agenda
-def cross_out_stores(store_list, completed_nums):
-    if pd.isna(store_list):
-        return store_list
-    stores = store_list.split(", ")
-    updated_stores = []
-    for store in stores:
-        if any(store.endswith(num) for num in completed_nums):
-            updated_stores.append(f"~~{store}~~")
-        else:
-            updated_stores.append(store)
-    return ", ".join(updated_stores)
+def cross_out_stores(name, completed_ids):
+    if pd.isna(name):
+        return name
+    for store_id in completed_ids:
+        if str(name).strip().endswith(str(store_id).strip()):
+            return f"<span style='text-decoration: line-through; color: gray;'>{name}</span>"
+    return name
+
 
 # Apply the cross-out logic to each store group column
 for col in ["Publix", "Sedanos", "Fresco y Mas"]:
