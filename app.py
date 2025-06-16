@@ -368,18 +368,26 @@ def wrap_text_after_n_commas(text, limit=8):
     wrapped = []
     for i in range(0, len(items), limit):
         wrapped.append(", ".join(items[i:i+limit]))
-    return "\n".join(wrapped)
+    return "<br>".join(wrapped)
 
-# Apply formatting only to existing columns
+# Apply wrapping to each brand column
 for col in ["Publix", "Sedano's", "Fresco y Mas"]:
     if col in agenda_df.columns:
         agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
 
+# Convert DataFrame to HTML
+agenda_html = agenda_df.to_html(escape=False, index=False)
+
+# Display as HTML in Streamlit
+st.markdown("### 📅 5-Day Delivery Agenda")
+st.markdown(agenda_html, unsafe_allow_html=True)
 
 
-# Step 5: Display in Streamlit
-st.subheader("🗓️ 5-Day Bucket Agenda Table")
-st.dataframe(agenda_df, use_container_width=True)
+
+
+# # Step 5: Display in Streamlit
+# st.subheader("🗓️ 5-Day Bucket Agenda Table")
+# st.dataframe(agenda_df, use_container_width=True)
 
 
 # st.set_page_config(layout="wide")
