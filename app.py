@@ -77,7 +77,7 @@ def get_5day_bucket(date):
     label = f"{start_date.strftime('%b %d')}–{end_date.strftime('%d')}"
     return f"{label} ({date.strftime('%Y')})"
 
-
+st.set_page_config(layout="wide")
 st.title("📦 Quality Quail Eggs")
 st.subheader("📅 Upcoming Deliveries:")
 
@@ -366,7 +366,7 @@ if uploaded_file:
         # ✅ Style "Stores" column
         gb.configure_column(
             "Stores",
-            header_name="🏪 Stores to Deliver",
+            #header_name="🏪 Stores to Deliver",
             autoHeight=True,
             wrapText=True,
             cellStyle={"whiteSpace": "normal"}
@@ -394,16 +394,18 @@ if uploaded_file:
 
         
         # Display the table
-        AgGrid(
-            grouped_calendar,
-            gridOptions=grid_options,
-            fit_columns_on_grid_load=False,
-            height=600,
-            theme="material",  # 🔥 Options: "streamlit", "light", "dark", "blue", "fresh", "material", "balham"
-            enable_enterprise_modules=False,
-            allow_unsafe_jscode=True,
-            reload_data=True
-        )
+        with st.container():
+            AgGrid(
+                grouped_calendar,
+                gridOptions=grid_options,
+                fit_columns_on_grid_load=False,
+                height=600,
+                theme="material",
+                enable_enterprise_modules=False,
+                allow_unsafe_jscode=True,
+                reload_data=True
+            )
+
 
 
     except Exception as e:
