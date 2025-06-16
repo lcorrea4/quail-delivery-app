@@ -329,27 +329,26 @@ df_sheet["Visit Date"] = df_sheet["Date"] + pd.to_timedelta(df_sheet["depletion_
 def get_bucket_date(visit_date):
     if pd.isna(visit_date):
         return None
-    # Make sure it's a Timestamp
     visit_date = pd.to_datetime(visit_date)
-
     day = visit_date.day
-    # Floor to the previous multiple of 5 (including the day itself)
-    bucket_day = ((day - 1) // 5) * 5 + 5
+    bucket_day = ((day - 1) // 5) * 5 + 1  # bucket start date
 
-    # If bucket_day goes beyond month's end, roll it back
     try:
         return visit_date.replace(day=bucket_day)
     except ValueError:
-        # If day exceeds month length (e.g., Feb 30), clamp to last valid day
+        # handle month end case
         next_month = (visit_date + pd.DateOffset(months=1)).replace(day=1)
         last_day = (next_month - pd.Timedelta(days=1)).day
         return visit_date.replace(day=last_day)
 
+
 df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
 
 # --- Filter future or current buckets only ---
-today = pd.to_datetime(datetime.today().date())
-df_sheet = df_sheet[df_sheet["bucket_date"] >= today]
+today = pd.Timestamp(datetime.today().date())
+today_bucket_day = ((today.day - 1) // 5) * 5 + 1
+today_bucket_date = today.replace(day=today_bucket_day)
+df_sheet = df_sheet[df_sheet["bucket_date"] >= today_bucket_date]
 
 # --- Normalize store names for grouping ---
 def normalize_store(name):
