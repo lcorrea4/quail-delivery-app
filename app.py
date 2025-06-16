@@ -314,17 +314,36 @@ df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
 df_sheet["Visit Date"] = df_sheet["Date"] + pd.to_timedelta(df_sheet["depletion_days_estimate"], unit="D")
 
 # --- Safely compute 5-day bucket date ---
+# def get_bucket_date(visit_date):
+#     if pd.isnull(visit_date):
+#         return pd.NaT
+#     year = visit_date.year
+#     month = visit_date.month
+#     day = visit_date.day
+#     bucket_day = ((day - 1) // 5) * 5 + 5
+#     # Make sure it doesn't exceed the last day of the month
+#     last_day = calendar.monthrange(year, month)[1]
+#     bucket_day = min(bucket_day, last_day)
+#     return pd.Timestamp(year=year, month=month, day=bucket_day)
+
 def get_bucket_date(visit_date):
-    if pd.isnull(visit_date):
-        return pd.NaT
-    year = visit_date.year
-    month = visit_date.month
+    if pd.isna(visit_date):
+        return None
+    # Make sure it's a Timestamp
+    visit_date = pd.to_datetime(visit_date)
+
     day = visit_date.day
+    # Floor to the previous multiple of 5 (including the day itself)
     bucket_day = ((day - 1) // 5) * 5 + 5
-    # Make sure it doesn't exceed the last day of the month
-    last_day = calendar.monthrange(year, month)[1]
-    bucket_day = min(bucket_day, last_day)
-    return pd.Timestamp(year=year, month=month, day=bucket_day)
+
+    # If bucket_day goes beyond month's end, roll it back
+    try:
+        return visit_date.replace(day=bucket_day)
+    except ValueError:
+        # If day exceeds month length (e.g., Feb 30), clamp to last valid day
+        next_month = (visit_date + pd.DateOffset(months=1)).replace(day=1)
+        last_day = (next_month - pd.Timedelta(days=1)).day
+        return visit_date.replace(day=last_day)
 
 df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
 
