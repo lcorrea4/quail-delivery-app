@@ -288,26 +288,6 @@ if uploaded_file:
 
         st.success("✅ Historical delivery data loaded successfully!")
 
-        # st.dataframe(df_hist)
-        # draw_calendar(df_hist)
-        # st.dataframe(df_hist)
-
-        # # Extract and sort unique store names
-        # unique_stores = (
-        #     df_hist[["Name"]]
-        #     .dropna()
-        #     .drop_duplicates()
-        #     .sort_values("Name")
-        # )
-        
-        # # Format for WhatsApp
-        # store_list_text = "\n".join(f"- {row['Name']} -" for _, row in unique_stores.iterrows())
-        
-        # # Display in Streamlit
-        # st.subheader("📋 Copy This List and Send via WhatsApp")
-        # st.text_area("Store List", store_list_text, height=400)
-
-
     
         # 1. Filter historical data to only get the last delivery per store
         last_deliveries = df_hist.sort_values("Date").groupby("Name", as_index=False).last()
@@ -389,34 +369,39 @@ if uploaded_file:
         # Build final options
         grid_options = gb.build()
 
+        # 1. Convert Visit Date to datetime first (ensure it's a datetime object)
         grouped_calendar["Visit Date"] = pd.to_datetime(grouped_calendar["Visit Date"], errors='coerce')
-        #grouped_calendar["Visit Date"] = grouped_calendar["Visit Date"].dt.strftime("%m/%d/%Y")
-
-        # Define today's date and the range end
-        today = date.today()
+        
+        # 2. Define today and the 5-day window
+        today = pd.to_datetime(date.today())  # ensure this is also datetime, not just date
         end_date = today + timedelta(days=4)
         
-        # Filter the calendar to only show a 5-day rolling window
+        # 3. Filter for the 5-day agenda view (correct types used)
         agenda_calendar = grouped_calendar[
-            (grouped_calendar["Visit Date"].dt.date >= today) &
-            (grouped_calendar["Visit Date"].dt.date <= end_date)
-        ]
-
-        # Step 3: Format to MM/DD/YYYY only AFTER filtering (for display)
+            (grouped_calendar["Visit Date"] >= today) &
+            (grouped_calendar["Visit Date"] <= end_date)
+        ].copy()
+        
+        # 4. Format Visit Date for display (AFTER filtering)
         agenda_calendar["Visit Date"] = agenda_calendar["Visit Date"].dt.strftime("%m/%d/%Y")
         
-        # Display the table
-        with st.container():
-            AgGrid(
-                agenda_calendar,
-                gridOptions=grid_options,
-                fit_columns_on_grid_load=False,
-                height=600,
-                theme="material",
-                enable_enterprise_modules=False,
-                allow_unsafe_jscode=True,
-                reload_data=True
-            )
+        # 5. (Optional) Add Day of the Week
+        agenda_calendar["Day"] = pd.to_datetime(agenda_calendar["Visit Date"], format="%m/%d/%Y").dt.strftime("%A")
+        
+        # 6. Reorder columns if you want
+        agenda_calendar = agenda_calendar[["Day", "Visit Date", "Store"]]
+        
+        # 7. Display the 5-day agenda in AgGrid
+        AgGrid(
+            agenda_calendar,
+            gridOptions=grid_options,
+            fit_columns_on_grid_load=False,
+            height=600,
+            theme="material",
+            enable_enterprise_modules=False,
+            allow_unsafe_jscode=True,
+            reload_data=True
+        )
 
 
 
