@@ -370,9 +370,11 @@ def wrap_text_after_n_commas(text, limit=8):
         wrapped.append(", ".join(items[i:i+limit]))
     return "\n".join(wrapped)
 
-# Apply to each store column
+# Apply formatting only to existing columns
 for col in ["Publix", "Sedano's", "Fresco y Mas"]:
-    agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
+    if col in agenda_df.columns:
+        agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
+
 
 
 # Step 5: Display in Streamlit
