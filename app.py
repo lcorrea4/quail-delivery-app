@@ -319,21 +319,20 @@ def get_bucket_date(visit_date):
         return None
     visit_date = pd.to_datetime(visit_date)
     day = visit_date.day
-
-    # Calculate bucket day as the nearest multiple of 5 (bucket start)
-    bucket_day = ((day - 1) // 5) * 5 + 5
-    # Shift bucket day back by 4 to get start of bucket period
-    bucket_day -= 4
-    if bucket_day < 1:
-        bucket_day = 1
-
+    
+    # Find the previous multiple of 5 for the day (bucket date)
+    bucket_day = (day // 5) * 5
+    if bucket_day == 0:
+        bucket_day = 5  # For days 1-4, bucket to day 5
+    
     try:
         return visit_date.replace(day=bucket_day)
     except ValueError:
-        # Handle month-end edge case (e.g. June 31)
+        # If bucket_day exceeds month's max day (like June 30 etc), clamp it
         next_month = (visit_date + pd.DateOffset(months=1)).replace(day=1)
         last_day = (next_month - pd.Timedelta(days=1)).day
         return visit_date.replace(day=last_day)
+
 
 
 
@@ -341,13 +340,14 @@ df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
 
 # --- Filter future or current buckets only ---
 today = pd.Timestamp(datetime.today().date())
-today_bucket_day = ((today.day - 1) // 5) * 5 + 5
-today_bucket_day -= 4
-if today_bucket_day < 1:
-    today_bucket_day = 1
+today_day = today.day
+today_bucket_day = (today_day // 5) * 5
+if today_bucket_day == 0:
+    today_bucket_day = 5
 today_bucket_date = today.replace(day=today_bucket_day)
 
 df_sheet = df_sheet[df_sheet["bucket_date"] >= today_bucket_date]
+
 
 
 # --- Normalize store names for grouping ---
