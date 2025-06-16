@@ -423,45 +423,58 @@ for bucket_date, group in df_sheet.groupby("bucket_date"):
 
 agenda_df = pd.DataFrame(agenda_data)
 
-# Input: Save completed store numbers
-completed_input = st.text_input("✅ Enter completed store numbers (comma-separated):")
+# --- Handle completed store numbers ---
+completed_input = st.text_input("Enter completed store numbers (comma-separated):")
+if completed_input:
+    completed_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
+    try:
+        # Access or create "Completed" sheet
+        try:
+            completed_sheet = spreadsheet.worksheet("Completed")
+        except gspread.exceptions.WorksheetNotFound:
+            completed_sheet = spreadsheet.add_worksheet(title="Completed", rows="100", cols="1")
+        
+        # Save new completed store numbers
+        completed_sheet.clear()
+        completed_df = pd.DataFrame({"store_id": completed_ids})
+        set_with_dataframe(completed_sheet, completed_df)
+        st.success("✅ Completed stores saved!")
+    except Exception as e:
+        st.error(f"❌ Failed to save completed stores: {e}")
 
-if st.button("Save Completed Stores"):
-    nums_to_save = [num.strip() for num in completed_input.split(",") if num.strip()]
-    sheet_completed.clear()
-    if nums_to_save:
-        sheet_completed.append_row(nums_to_save)
-    st.success("Completed store numbers saved!")
+# --- Load completed stores from "Completed" sheet ---
+try:
+    completed_sheet = spreadsheet.worksheet("Completed")
+    completed_df = get_as_dataframe(completed_sheet).dropna(how="all")
+    completed_ids = completed_df["store_id"].astype(str).str.strip().tolist()
+except Exception:
+    completed_ids = []
 
+# --- Define cross-out function ---
+def cross_out_stores(cell_value, completed_ids):
+    if pd.isna(cell_value) or not isinstance(cell_value, str):
+        return cell_value
 
-def wrap_text_after_n_commas(text, limit=8):
-    if pd.isna(text) or not isinstance(text, str):
-        return text
-    items = [item.strip() for item in text.split(",")]
+    parts = cell_value.replace("<br>", ", ").split(",")
+    crossed_parts = []
+    for name in parts:
+        name = name.strip()
+        if any(name.endswith(store_id.strip()) for store_id in completed_ids):
+            crossed_parts.append(f"<span style='text-decoration: line-through; color: gray;'>{name}</span>")
+        else:
+            crossed_parts.append(name)
+
+    # Wrap after every 8 stores
     wrapped = []
-    for i in range(0, len(items), limit):
-        wrapped.append(", ".join(items[i:i+limit]))
+    for i in range(0, len(crossed_parts), 8):
+        wrapped.append(", ".join(crossed_parts[i:i+8]))
     return "<br>".join(wrapped)
 
-# Apply wrapping to each brand column
-for col in ["Publix", "Sedano's", "Fresco y Mas"]:
-    if col in agenda_df.columns:
-        agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
-
-# Cross out completed stores in the agenda
-def cross_out_stores(name, completed_ids):
-    if pd.isna(name):
-        return name
-    for store_id in completed_ids:
-        if str(name).strip().endswith(str(store_id).strip()):
-            return f"<span style='text-decoration: line-through; color: gray;'>{name}</span>"
-    return name
-
-
-# Apply the cross-out logic to each store group column
+# --- Apply wrapping and crossing out ---
 for col in ["Publix", "Sedanos", "Fresco y Mas"]:
     if col in agenda_df.columns:
-        agenda_df[col] = agenda_df[col].apply(lambda x: cross_out_stores(x, completed_set))
+        agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
+        agenda_df[col] = agenda_df[col].apply(lambda x: cross_out_stores(x, completed_ids))
 
 
 # Convert DataFrame to HTML
