@@ -112,39 +112,20 @@ uploaded_file = st.file_uploader("Upload Excel File with Historical Deliveries",
     
 
 if uploaded_file:
-    # sheet_name = st.text_input("Enter the sheet name", value="")
-
     try:
-        # Read the full Excel file with no headers to find boundaries
+        # --- Load and slice raw data ---
         raw_df = pd.read_excel(uploaded_file, sheet_name="Sheet1", header=None)
 
-        # Find the row where the string starts and ends in column C (index 2)
         start_row = raw_df[2][raw_df[2] == "QUAIL EGGS X 10 (QUAIL EGGS X 10)"].index[0] + 1
         end_row = raw_df[2][raw_df[2] == "Total QUAIL EGGS X 10 (QUAIL EGGS X 10)"].index[0] - 1
-
-        # Define Excel columns to keep: F,H,J,L,N,P,R,T,V = indices 5,7,...,21
         target_cols = [5, 7, 9, 11, 13, 15, 17, 19, 21]
-
-        # Slice the relevant data
         df_hist = raw_df.loc[start_row:end_row, target_cols].copy()
 
-        # Rename columns for readability (adjust as needed)
+        # Rename columns
         df_hist.columns = [
             "Type", "Date", "Num", "Memo", "Name",
             "Qty", "Sales Price", "Amount", "Balance"
         ]
-
-        # Safely assign column names if the number of columns matches
-        expected_columns = [
-            "Type", "Date", "Num", "Memo", "Name",
-            "Qty", "Sales Price", "Amount", "Balance"
-        ]
-        
-        if len(df_hist.columns) == len(expected_columns):
-            df_hist.columns = expected_columns
-        else:
-            st.warning(f"⚠️ Expected {len(expected_columns)} columns but got {len(df_hist.columns)}. Showing raw data for review.")
-            st.dataframe(df_hist.head())
         # Raw input as a multiline string (paste your actual list here)
         raw_store_list = """
         - Fresco y Mas 1717 - 30
@@ -299,39 +280,29 @@ if uploaded_file:
         - sedanos 1 - 40
         """
         
-        # Step 1: Clean and parse
         store_days = []
         for line in raw_store_list.strip().splitlines():
             cleaned = line.lstrip("- ").strip()
             if " - " in cleaned:
                 store_name, days = cleaned.rsplit(" - ", 1)
                 store_days.append((store_name.strip(), int(days.strip())))
-        
-        # Step 2: Convert to DataFrame
         days_df = pd.DataFrame(store_days, columns=["Name", "depletion_days_estimate"])
-        
-        # Step 3: Merge into your existing df_hist
+
+        # Merge with historical deliveries
         df_hist = df_hist.merge(days_df, on="Name", how="left")
 
         st.success("✅ Historical delivery data loaded successfully!")
 
-    
-        # 1. Filter historical data to only get the last delivery per store
+        # --- Generate future delivery dates ---
         last_deliveries = df_hist.sort_values("Date").groupby("Name", as_index=False).last()
-        
-        # 2. Set up a DataFrame to hold future visits
+
         calendar_rows = []
-        
-        # 3. Simulate future delivery dates based on depletion estimate
         for _, row in last_deliveries.iterrows():
             store = row["Name"]
             last_date = pd.to_datetime(row["Date"])
             days_est = row.get("depletion_days_estimate")
-        
-            # Skip if depletion estimate is missing
             if pd.isna(days_est):
                 continue
-        
             visit_date = last_date + timedelta(days=days_est)
             while visit_date <= pd.Timestamp("2025-07-31"):
                 if visit_date >= pd.Timestamp("2025-06-01"):
@@ -340,122 +311,38 @@ if uploaded_file:
                         "Visit Date": visit_date.date()
                     })
                 visit_date += timedelta(days=days_est)
-        
-        # 4. Create the calendar DataFrame
-        calendar_df = pd.DataFrame(calendar_rows).sort_values("Visit Date")
 
-# Apply bucket grouping columns
+        calendar_df = pd.DataFrame(calendar_rows).sort_values("Visit Date")
         calendar_df["Visit Date"] = pd.to_datetime(calendar_df["Visit Date"])
-        calendar_df[["bucket_start", "5-Day Window"]] = calendar_df["Visit Date"].apply(
+
+        # --- Prepare for calendar drawing ---
+        # Rename columns to match draw_calendar signature
+        calendar_df.rename(columns={"Visit Date": "Date", "Store": "Name"}, inplace=True)
+
+        # Draw calendar view
+        draw_calendar(calendar_df)
+
+        # --- Prepare 5-Day Bucket agenda view ---
+        calendar_df[["bucket_start", "5-Day Window"]] = calendar_df["Date"].apply(
             lambda d: pd.Series(get_5day_bucket(d))
         )
-
-        # Filter for buckets from today onward
         calendar_df = calendar_df[calendar_df["bucket_start"] >= date.today()]
 
         st.subheader("📅 Upcoming Deliveries: 5-Day Agenda View")
 
-        # Group by bucket_start for sorting and 5-Day Window for label
         grouped = calendar_df.groupby(["bucket_start", "5-Day Window"])
 
         if grouped.ngroups == 0:
             st.write("No upcoming deliveries found.")
         else:
-            # Sort groups by bucket_start
             sorted_groups = sorted(grouped, key=lambda x: x[0])
-
             for (bucket_start, group_label), items in sorted_groups:
                 st.markdown(f"### 📌 {group_label}")
-                agenda_table = items[["Store", "Visit Date"]].copy()
-                agenda_table["Visit Date"] = agenda_table["Visit Date"].dt.strftime("%m/%d/%Y")
-                st.dataframe(agenda_table, use_container_width=True)
+                agenda_table = items[["Name", "Date"]].copy()
+                agenda_table["Date"] = agenda_table["Date"].dt.strftime("%m/%d/%Y")
+                st.dataframe(agenda_table.rename(columns={"Name": "Store", "Date": "Visit Date"}), use_container_width=True)
 
-    
-        # Show result
-        # st.subheader("📅 Projected Delivery Calendar (June & July)")
-        # # Build grid options to enable horizontal scroll and column resizing
-        # # Build options
-        # gb = GridOptionsBuilder.from_dataframe(grouped_calendar)
-        
-        # # ✅ Make columns resizable and wrap text
-        # gb.configure_default_column(
-        #     resizable=True,
-        #     wrapText=True,
-        #     autoHeight=True,
-        #     sortable=True,
-        #     filter=True
-        # )
-        
-        # # ✅ Adjust "Visit Date" column width and alignment
-        # gb.configure_column(
-        #     "Visit Date",
-        #     header_name="📅 Visit Date",
-        #     width=150,
-        #     cellStyle={"textAlign": "center", "fontWeight": "bold"}
-        # )
-        
-        # # ✅ Style "Stores" column
-        # gb.configure_column(
-        #     "Stores",
-        #     #header_name="🏪 Stores to Deliver",
-        #     autoHeight=True,
-        #     wrapText=True,
-        #     cellStyle={"whiteSpace": "normal"}
-        # )
-        
-        # # ✅ Optional: Add zebra striping (row styles)
-        # gb.configure_grid_options(
-        #     domLayout='normal',
-        #     rowStyle={"background": "#f9f9f9"},
-        #     getRowStyle=JsCode("""
-        #         function(params) {
-        #             if (params.node.rowIndex % 2 === 0) {
-        #                 return { 'background': '#ffffff' };
-        #             }
-        #             return { 'background': '#f1f3f6' };
-        #         }
-        #     """)
-        # )
-        
-        # # Build final options
-        # grid_options = gb.build()
-
-        # # 1. Convert Visit Date to datetime first (ensure it's a datetime object)
-        # grouped_calendar["Visit Date"] = pd.to_datetime(grouped_calendar["Visit Date"], errors='coerce')
-        
-        # # 2. Define today and the 5-day window
-        # today = pd.to_datetime(date.today())  # ensure this is also datetime, not just date
-        # end_date = today + timedelta(days=4)
-        
-        # # 3. Filter for the 5-day agenda view (correct types used)
-        # agenda_calendar = grouped_calendar[
-        #     (grouped_calendar["Visit Date"] >= today) &
-        #     (grouped_calendar["Visit Date"] <= end_date)
-        # ].copy()
-        
-        # # 4. Format Visit Date for display (AFTER filtering)
-        # agenda_calendar["Visit Date"] = agenda_calendar["Visit Date"].dt.strftime("%m/%d/%Y")
-        
-        # # 5. (Optional) Add Day of the Week
-        # agenda_calendar["Day"] = pd.to_datetime(agenda_calendar["Visit Date"], format="%m/%d/%Y").dt.strftime("%A")
-        
-        # # 6. Reorder columns if you want
-        # agenda_calendar = agenda_calendar[["Day", "Visit Date", "Stores"]]
-        
-        # # 7. Display the 5-day agenda in AgGrid
-        # AgGrid(
-        #     agenda_calendar,
-        #     gridOptions=grid_options,
-        #     fit_columns_on_grid_load=False,
-        #     height=600,
-        #     theme="material",
-        #     enable_enterprise_modules=False,
-        #     allow_unsafe_jscode=True,
-        #     reload_data=True
-        # )
-
-
-
+  
     except Exception as e:
         st.error(f"⚠️ Error loading file: {e}")
 
