@@ -365,12 +365,10 @@ def get_bucket_date(visit_date):
 
 
 
-# --- Handle completed store numbers ---
-completed_input = st.text_input("Enter completed store numbers (comma-separated):")
-
+completed_input = st.text_input("✅ Enter completed store numbers (comma-separated):")
 
 if st.button("💾 Save Completed Stores"):
-    completed_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
+    new_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
     try:
         # Access or create "Completed" sheet
         try:
@@ -378,13 +376,24 @@ if st.button("💾 Save Completed Stores"):
         except gspread.exceptions.WorksheetNotFound:
             completed_sheet = spreadsheet.add_worksheet(title="Completed", rows="100", cols="1")
         
-        # Save new completed store numbers
+        # Load existing completed IDs from sheet
+        existing_df = get_as_dataframe(completed_sheet).dropna(how="all")
+        existing_ids = set()
+        if not existing_df.empty and "store_id" in existing_df.columns:
+            existing_ids = set(existing_df["store_id"].astype(str).str.strip())
+        
+        # Combine existing and new IDs, avoiding duplicates
+        combined_ids = sorted(existing_ids.union(new_ids))
+        
+        # Save combined list back to sheet
         completed_sheet.clear()
-        completed_df = pd.DataFrame({"store_id": completed_ids})
-        set_with_dataframe(completed_sheet, completed_df)
+        combined_df = pd.DataFrame({"store_id": combined_ids})
+        set_with_dataframe(completed_sheet, combined_df)
+        
         st.success("✅ Completed stores saved!")
     except Exception as e:
         st.error(f"❌ Failed to save completed stores: {e}")
+
 
 # --- Load completed stores from "Completed" sheet ---
 try:
