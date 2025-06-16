@@ -307,11 +307,16 @@ with st.expander("📄 View Current Google Sheet Data", expanded=False):
     except Exception as e:
         st.error(f"❌ Error loading Google Sheet: {e}")
 
+
 # --- Visit Date & 5-Day Bucket Agenda ---
 
 # --- Compute Visit Date ---
 df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
 df_sheet["Visit Date"] = df_sheet["Date"] + pd.to_timedelta(df_sheet["depletion_days_estimate"], unit="D")
+
+with st.expander("Agenda Data", expanded = False):
+    st.dataframe(df_sheet, use_container_width=True)
+
 
 
 def get_bucket_date(visit_date):
