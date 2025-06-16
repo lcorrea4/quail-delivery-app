@@ -483,8 +483,9 @@ def cross_out_stores(cell_value, completed_ids):
 # --- Apply wrapping and crossing out ---
 for col in ["Publix", "Sedanos", "Fresco y Mas"]:
     if col in agenda_df.columns:
-        agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
         agenda_df[col] = agenda_df[col].apply(lambda x: cross_out_stores(x, completed_ids))
+        agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
+
 
 
 # Convert DataFrame to HTML
