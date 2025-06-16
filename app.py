@@ -331,32 +331,7 @@ with st.expander("📄 View Current Google Sheet Data", expanded=False):
         st.error(f"❌ Error loading Google Sheet: {e}")
 
 
-# --- Handle completed store numbers ---
-completed_input = st.text_input("Enter completed store numbers (comma-separated):")
-if completed_input:
-    completed_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
-    try:
-        # Access or create "Completed" sheet
-        try:
-            completed_sheet = spreadsheet.worksheet("Completed")
-        except gspread.exceptions.WorksheetNotFound:
-            completed_sheet = spreadsheet.add_worksheet(title="Completed", rows="100", cols="1")
-        
-        # Save new completed store numbers
-        completed_sheet.clear()
-        completed_df = pd.DataFrame({"store_id": completed_ids})
-        set_with_dataframe(completed_sheet, completed_df)
-        st.success("✅ Completed stores saved!")
-    except Exception as e:
-        st.error(f"❌ Failed to save completed stores: {e}")
 
-# --- Load completed stores from "Completed" sheet ---
-try:
-    completed_sheet = spreadsheet.worksheet("Completed")
-    completed_df = get_as_dataframe(completed_sheet).dropna(how="all")
-    completed_ids = completed_df["store_id"].astype(str).str.strip().tolist()
-except Exception:
-    completed_ids = []
 
 # --- Visit Date & 5-Day Bucket Agenda ---
 
@@ -390,7 +365,33 @@ def get_bucket_date(visit_date):
 
 
 
+# --- Handle completed store numbers ---
+completed_input = st.text_input("Enter completed store numbers (comma-separated):")
+if completed_input:
+    completed_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
+    try:
+        # Access or create "Completed" sheet
+        try:
+            completed_sheet = spreadsheet.worksheet("Completed")
+        except gspread.exceptions.WorksheetNotFound:
+            completed_sheet = spreadsheet.add_worksheet(title="Completed", rows="100", cols="1")
+        
+        # Save new completed store numbers
+        completed_sheet.clear()
+        completed_df = pd.DataFrame({"store_id": completed_ids})
+        set_with_dataframe(completed_sheet, completed_df)
+        st.success("✅ Completed stores saved!")
+    except Exception as e:
+        st.error(f"❌ Failed to save completed stores: {e}")
 
+# --- Load completed stores from "Completed" sheet ---
+try:
+    completed_sheet = spreadsheet.worksheet("Completed")
+    completed_df = get_as_dataframe(completed_sheet).dropna(how="all")
+    completed_ids = completed_df["store_id"].astype(str).str.strip().tolist()
+except Exception:
+    completed_ids = []
+    
 df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
 
 # --- Filter future or current buckets only ---
