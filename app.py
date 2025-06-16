@@ -312,11 +312,18 @@ with st.expander("📄 View Current Google Sheet Data", expanded=False):
 df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
 df_sheet["Visit Date"] = df_sheet["Date"] + pd.to_timedelta(df_sheet["depletion_days_estimate"], unit="D")
 
-# --- Create 5-day bucket based on multiples of 5 ---
+# --- Safely compute 5-day bucket date ---
 def get_bucket_date(visit_date):
+    if pd.isnull(visit_date):
+        return pd.NaT
+    year = visit_date.year
+    month = visit_date.month
     day = visit_date.day
     bucket_day = ((day - 1) // 5) * 5 + 5
-    return visit_date.replace(day=bucket_day)
+    # Make sure it doesn't exceed the last day of the month
+    last_day = calendar.monthrange(year, month)[1]
+    bucket_day = min(bucket_day, last_day)
+    return pd.Timestamp(year=year, month=month, day=bucket_day)
 
 df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
 
