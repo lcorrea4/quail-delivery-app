@@ -392,6 +392,15 @@ if uploaded_file:
         grouped_calendar["Visit Date"] = pd.to_datetime(grouped_calendar["Visit Date"], errors='coerce')
         grouped_calendar["Visit Date"] = grouped_calendar["Visit Date"].dt.strftime("%m/%d/%Y")
 
+        # Define today's date and the range end
+        today = date.today()
+        end_date = today + timedelta(days=4)
+        
+        # Filter the calendar to only show a 5-day rolling window
+        agenda_calendar = grouped_calendar[
+            (grouped_calendar["Visit Date"] >= today) &
+            (grouped_calendar["Visit Date"] <= end_date)
+        ]
         
         # Display the table
         with st.container():
