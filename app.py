@@ -113,6 +113,33 @@ st.set_page_config(layout="wide")
 
 st.title("🥚 Quail Egg Delivery Manager")
 
+# --- Handle completed store numbers ---
+completed_input = st.text_input("Enter completed store numbers (comma-separated):")
+if completed_input:
+    completed_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
+    try:
+        # Access or create "Completed" sheet
+        try:
+            completed_sheet = spreadsheet.worksheet("Completed")
+        except gspread.exceptions.WorksheetNotFound:
+            completed_sheet = spreadsheet.add_worksheet(title="Completed", rows="100", cols="1")
+        
+        # Save new completed store numbers
+        completed_sheet.clear()
+        completed_df = pd.DataFrame({"store_id": completed_ids})
+        set_with_dataframe(completed_sheet, completed_df)
+        st.success("✅ Completed stores saved!")
+    except Exception as e:
+        st.error(f"❌ Failed to save completed stores: {e}")
+
+# --- Load completed stores from "Completed" sheet ---
+try:
+    completed_sheet = spreadsheet.worksheet("Completed")
+    completed_df = get_as_dataframe(completed_sheet).dropna(how="all")
+    completed_ids = completed_df["store_id"].astype(str).str.strip().tolist()
+except Exception:
+    completed_ids = []
+
 # Load completed store numbers
 try:
     completed_vals = sheet_completed.get_all_values()
@@ -437,32 +464,7 @@ for bucket_date, group in df_sheet.groupby("bucket_date"):
 
 agenda_df = pd.DataFrame(agenda_data)
 
-# --- Handle completed store numbers ---
-completed_input = st.text_input("Enter completed store numbers (comma-separated):")
-if completed_input:
-    completed_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
-    try:
-        # Access or create "Completed" sheet
-        try:
-            completed_sheet = spreadsheet.worksheet("Completed")
-        except gspread.exceptions.WorksheetNotFound:
-            completed_sheet = spreadsheet.add_worksheet(title="Completed", rows="100", cols="1")
-        
-        # Save new completed store numbers
-        completed_sheet.clear()
-        completed_df = pd.DataFrame({"store_id": completed_ids})
-        set_with_dataframe(completed_sheet, completed_df)
-        st.success("✅ Completed stores saved!")
-    except Exception as e:
-        st.error(f"❌ Failed to save completed stores: {e}")
 
-# --- Load completed stores from "Completed" sheet ---
-try:
-    completed_sheet = spreadsheet.worksheet("Completed")
-    completed_df = get_as_dataframe(completed_sheet).dropna(how="all")
-    completed_ids = completed_df["store_id"].astype(str).str.strip().tolist()
-except Exception:
-    completed_ids = []
 
 # --- Define cross-out function ---
 def cross_out_stores(cell_value, completed_ids):
