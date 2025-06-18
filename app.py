@@ -324,23 +324,22 @@ if "bucket_date" not in df_sheet.columns or df_sheet["bucket_date"].isna().any()
     df_sheet["Visit Date"] = pd.to_datetime(df_sheet["Visit Date"], errors="coerce")
     df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
 
-# Save Completed Stores Button
+
 if st.button("💾 Save Completed Stores"):
     new_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
     try:
         today = pd.Timestamp(datetime.today().date())
-        today_bucket = get_bucket_date(today)  # Using updated bucket function here
+        today_bucket = get_bucket_date(today)
 
         if defer_toggle:
             error_stores = []
             for store_id in new_ids:
                 store_id = store_id.strip()
-                # Match by abbreviated store name
                 match_idx = df_sheet[
                     (df_sheet["Name"] == abbreviate_completed_id(store_id)) & 
                     (df_sheet["bucket_date"] == today_bucket)
                 ].index
-        
+
                 if not match_idx.empty:
                     current_visit = df_sheet.loc[match_idx[0], "Visit Date"]
                     if pd.notna(current_visit):
@@ -349,16 +348,16 @@ if st.button("💾 Save Completed Stores"):
                         df_sheet.at[match_idx[0], "bucket_date"] = get_bucket_date(new_visit)
                 else:
                     error_stores.append(store_id)
-        
+
             if error_stores:
                 st.error(f"❌ These stores were not found in the current 5-day bucket ({today_bucket.strftime('%-m/%-d')}): {', '.join(error_stores)}")
             else:
-                # ✅ Save changes after deferral
+                # Save deferred changes
                 sheet.clear()
                 set_with_dataframe(sheet, df_sheet)
                 st.success("✅ Store(s) deferred to next 5-day bucket.")
-        
-                # ✅ Reload data & recalculate derived fields
+
+                # Reload updated data
                 df_sheet = get_as_dataframe(sheet).dropna(how="all")
                 df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
                 df_sheet["Visit Date"] = pd.to_datetime(df_sheet["Visit Date"], errors="coerce")
@@ -367,81 +366,158 @@ if st.button("💾 Save Completed Stores"):
                 df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
 
         else:
-            # Save completed stores to sheet
-            try:
-                completed_sheet = spreadsheet.worksheet("Completed")
-            except gspread.exceptions.WorksheetNotFound:
-                completed_sheet = spreadsheet.add_worksheet(title="Completed", rows="100", cols="1")
+            # (Handle non-defer saving here...)
 
-            existing_df = get_as_dataframe(completed_sheet).dropna(how="all")
-            existing_ids = set()
-            if not existing_df.empty and "store_id" in existing_df.columns:
-                existing_ids = set(existing_df["store_id"].astype(str).str.strip())
+        # Debug print bucket dates after reload
+        st.write("### Bucket Dates after reload")
+        st.write(df_sheet[["Name", "Visit Date", "bucket_date"]])
 
-            combined_ids = sorted(existing_ids.union(new_ids))
-            completed_sheet.clear()
-            combined_df = pd.DataFrame({"store_id": combined_ids})
-            set_with_dataframe(completed_sheet, combined_df)
+        # Adjust filtering to show agenda for current and next bucket to catch deferred stores
+        current_bucket = get_bucket_date(today)
+        next_bucket = current_bucket + timedelta(days=5)
+        mask = df_sheet["bucket_date"].isin([current_bucket, next_bucket])
+        filtered_df = df_sheet[mask]
 
-            st.success("✅ Completed stores saved!")
+        if filtered_df.empty:
+            st.warning("⚠️ No delivery data available for current or next bucket.")
+        else:
+            agenda_data = []
+            for bucket_date, group in filtered_df.groupby("bucket_date"):
+                row = {
+                    "5-day-bucket-date": bucket_date.strftime("%-m/%-d"),
+                    "Publix": ", ".join(group[group["store_group"] == "Publix"]["Name"].unique()),
+                    "Sedanos": ", ".join(group[group["store_group"] == "Sedanos"]["Name"].unique()),
+                    "Fresco y Mas": ", ".join(group[group["store_group"] == "Fresco y Mas"]["Name"].unique()),
+                }
+                agenda_data.append(row)
 
-        # Refresh df_sheet after changes
-        df_sheet = get_as_dataframe(sheet).dropna(how="all")
-        df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
-        df_sheet["Visit Date"] = pd.to_datetime(df_sheet["Visit Date"], errors="coerce")
-        df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
-        df_sheet["store_group"] = df_sheet["Name"].apply(normalize_store)
-        df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
+            agenda_df = pd.DataFrame(agenda_data)
+            agenda_html = agenda_df.to_html(escape=False, index=False)
+            st.markdown("### 📅 5-Day Delivery Agenda")
+            st.markdown(agenda_html, unsafe_allow_html=True)
 
     except Exception as e:
         st.error(f"❌ Failed to save: {e}")
 
 
+# # Save Completed Stores Button
+# if st.button("💾 Save Completed Stores"):
+#     new_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
+#     try:
+#         today = pd.Timestamp(datetime.today().date())
+#         today_bucket = get_bucket_date(today)  # Using updated bucket function here
+
+#         if defer_toggle:
+#             error_stores = []
+#             for store_id in new_ids:
+#                 store_id = store_id.strip()
+#                 # Match by abbreviated store name
+#                 match_idx = df_sheet[
+#                     (df_sheet["Name"] == abbreviate_completed_id(store_id)) & 
+#                     (df_sheet["bucket_date"] == today_bucket)
+#                 ].index
+        
+#                 if not match_idx.empty:
+#                     current_visit = df_sheet.loc[match_idx[0], "Visit Date"]
+#                     if pd.notna(current_visit):
+#                         new_visit = current_visit + timedelta(days=5)
+#                         df_sheet.at[match_idx[0], "Visit Date"] = new_visit
+#                         df_sheet.at[match_idx[0], "bucket_date"] = get_bucket_date(new_visit)
+#                 else:
+#                     error_stores.append(store_id)
+        
+#             if error_stores:
+#                 st.error(f"❌ These stores were not found in the current 5-day bucket ({today_bucket.strftime('%-m/%-d')}): {', '.join(error_stores)}")
+#             else:
+#                 # ✅ Save changes after deferral
+#                 sheet.clear()
+#                 set_with_dataframe(sheet, df_sheet)
+#                 st.success("✅ Store(s) deferred to next 5-day bucket.")
+        
+#                 # ✅ Reload data & recalculate derived fields
+#                 df_sheet = get_as_dataframe(sheet).dropna(how="all")
+#                 df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
+#                 df_sheet["Visit Date"] = pd.to_datetime(df_sheet["Visit Date"], errors="coerce")
+#                 df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
+#                 df_sheet["store_group"] = df_sheet["Name"].apply(normalize_store)
+#                 df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
+
+#         else:
+#             # Save completed stores to sheet
+#             try:
+#                 completed_sheet = spreadsheet.worksheet("Completed")
+#             except gspread.exceptions.WorksheetNotFound:
+#                 completed_sheet = spreadsheet.add_worksheet(title="Completed", rows="100", cols="1")
+
+#             existing_df = get_as_dataframe(completed_sheet).dropna(how="all")
+#             existing_ids = set()
+#             if not existing_df.empty and "store_id" in existing_df.columns:
+#                 existing_ids = set(existing_df["store_id"].astype(str).str.strip())
+
+#             combined_ids = sorted(existing_ids.union(new_ids))
+#             completed_sheet.clear()
+#             combined_df = pd.DataFrame({"store_id": combined_ids})
+#             set_with_dataframe(completed_sheet, combined_df)
+
+#             st.success("✅ Completed stores saved!")
+
+#         # Refresh df_sheet after changes
+#         df_sheet = get_as_dataframe(sheet).dropna(how="all")
+#         df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
+#         df_sheet["Visit Date"] = pd.to_datetime(df_sheet["Visit Date"], errors="coerce")
+#         df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
+#         df_sheet["store_group"] = df_sheet["Name"].apply(normalize_store)
+#         df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
+
+#     except Exception as e:
+#         st.error(f"❌ Failed to save: {e}")
 
 
-df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
-
-today = pd.Timestamp(datetime.today().date())
-today_bucket_date = get_bucket_date(today)
-df_sheet = df_sheet[df_sheet["bucket_date"] >= today_bucket_date]
 
 
-df_sheet["store_group"] = df_sheet["Name"].apply(normalize_store)
+# df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
 
-df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
+# today = pd.Timestamp(datetime.today().date())
+# today_bucket_date = get_bucket_date(today)
+# df_sheet = df_sheet[df_sheet["bucket_date"] >= today_bucket_date]
 
-# Reload completed store IDs (for crossing out)
-try:
-    completed_sheet = spreadsheet.worksheet("Completed")
-    completed_df = get_as_dataframe(completed_sheet).dropna(how="all")
-    completed_ids = completed_df["store_id"].astype(str).str.strip().tolist()
-except Exception:
-    completed_ids = []
 
-completed_ids = [abbreviate_completed_id(x) for x in completed_ids]
+# df_sheet["store_group"] = df_sheet["Name"].apply(normalize_store)
 
-# Display Agenda if data exists
-if not df_sheet.empty:
-    today = pd.Timestamp(datetime.today().date())
-    current_bucket_date = get_bucket_date(today)
-    df_sheet = df_sheet[df_sheet["bucket_date"] >= current_bucket_date]
+# df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
 
-    agenda_data = []
-    for bucket_date, group in df_sheet.groupby("bucket_date"):
-        row = {
-            "5-day-bucket-date": bucket_date.strftime("%-m/%-d"),
-            "Publix": ", ".join(group[group["store_group"] == "Publix"]["Name"].unique()),
-            "Sedanos": ", ".join(group[group["store_group"] == "Sedanos"]["Name"].unique()),
-            "Fresco y Mas": ", ".join(group[group["store_group"] == "Fresco y Mas"]["Name"].unique()),
-        }
-        agenda_data.append(row)
+# # Reload completed store IDs (for crossing out)
+# try:
+#     completed_sheet = spreadsheet.worksheet("Completed")
+#     completed_df = get_as_dataframe(completed_sheet).dropna(how="all")
+#     completed_ids = completed_df["store_id"].astype(str).str.strip().tolist()
+# except Exception:
+#     completed_ids = []
 
-    agenda_df = pd.DataFrame(agenda_data)
-    agenda_html = agenda_df.to_html(escape=False, index=False)
-    st.markdown("### 📅 5-Day Delivery Agenda")
-    st.markdown(agenda_html, unsafe_allow_html=True)
-else:
-    st.warning("⚠️ No delivery data available.")
+# completed_ids = [abbreviate_completed_id(x) for x in completed_ids]
+
+# # Display Agenda if data exists
+# if not df_sheet.empty:
+#     today = pd.Timestamp(datetime.today().date())
+#     current_bucket_date = get_bucket_date(today)
+#     df_sheet = df_sheet[df_sheet["bucket_date"] >= current_bucket_date]
+
+#     agenda_data = []
+#     for bucket_date, group in df_sheet.groupby("bucket_date"):
+#         row = {
+#             "5-day-bucket-date": bucket_date.strftime("%-m/%-d"),
+#             "Publix": ", ".join(group[group["store_group"] == "Publix"]["Name"].unique()),
+#             "Sedanos": ", ".join(group[group["store_group"] == "Sedanos"]["Name"].unique()),
+#             "Fresco y Mas": ", ".join(group[group["store_group"] == "Fresco y Mas"]["Name"].unique()),
+#         }
+#         agenda_data.append(row)
+
+#     agenda_df = pd.DataFrame(agenda_data)
+#     agenda_html = agenda_df.to_html(escape=False, index=False)
+#     st.markdown("### 📅 5-Day Delivery Agenda")
+#     st.markdown(agenda_html, unsafe_allow_html=True)
+# else:
+#     st.warning("⚠️ No delivery data available.")
 
 
 
