@@ -326,6 +326,7 @@ if "bucket_date" not in df_sheet.columns or df_sheet["bucket_date"].isna().any()
 
 
 # Save Completed Stores Button
+# Save Completed Stores Button
 if st.button("💾 Save Completed Stores"):
     new_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
     try:
@@ -397,37 +398,34 @@ if st.button("💾 Save Completed Stores"):
     except Exception as e:
         st.error(f"❌ Failed to save: {e}")
 
-# Debug print bucket dates after reload (optional)
-st.write("### Bucket Dates after reload")
-st.write(df_sheet[["Name", "Visit Date", "bucket_date"]])
+    # Debug print bucket dates after reload (optional)
+    st.write("### Bucket Dates after reload")
+    st.write(df_sheet[["Name", "Visit Date", "bucket_date"]])
 
+    # Adjust filtering to show agenda for current and next bucket to catch deferred stores
+    current_bucket = get_bucket_date(today)
+    next_bucket = current_bucket + timedelta(days=5)
+    mask = df_sheet["bucket_date"].isin([current_bucket, next_bucket])
+    filtered_df = df_sheet[mask]
 
-        # Adjust filtering to show agenda for current and next bucket to catch deferred stores
-        current_bucket = get_bucket_date(today)
-        next_bucket = current_bucket + timedelta(days=5)
-        mask = df_sheet["bucket_date"].isin([current_bucket, next_bucket])
-        filtered_df = df_sheet[mask]
+    if filtered_df.empty:
+        st.warning("⚠️ No delivery data available for current or next bucket.")
+    else:
+        agenda_data = []
+        for bucket_date, group in filtered_df.groupby("bucket_date"):
+            row = {
+                "5-day-bucket-date": bucket_date.strftime("%-m/%-d"),
+                "Publix": ", ".join(group[group["store_group"] == "Publix"]["Name"].unique()),
+                "Sedanos": ", ".join(group[group["store_group"] == "Sedanos"]["Name"].unique()),
+                "Fresco y Mas": ", ".join(group[group["store_group"] == "Fresco y Mas"]["Name"].unique()),
+            }
+            agenda_data.append(row)
 
-        if filtered_df.empty:
-            st.warning("⚠️ No delivery data available for current or next bucket.")
-        else:
-            agenda_data = []
-            for bucket_date, group in filtered_df.groupby("bucket_date"):
-                row = {
-                    "5-day-bucket-date": bucket_date.strftime("%-m/%-d"),
-                    "Publix": ", ".join(group[group["store_group"] == "Publix"]["Name"].unique()),
-                    "Sedanos": ", ".join(group[group["store_group"] == "Sedanos"]["Name"].unique()),
-                    "Fresco y Mas": ", ".join(group[group["store_group"] == "Fresco y Mas"]["Name"].unique()),
-                }
-                agenda_data.append(row)
+        agenda_df = pd.DataFrame(agenda_data)
+        agenda_html = agenda_df.to_html(escape=False, index=False)
+        st.markdown("### 📅 5-Day Delivery Agenda")
+        st.markdown(agenda_html, unsafe_allow_html=True)
 
-            agenda_df = pd.DataFrame(agenda_data)
-            agenda_html = agenda_df.to_html(escape=False, index=False)
-            st.markdown("### 📅 5-Day Delivery Agenda")
-            st.markdown(agenda_html, unsafe_allow_html=True)
-
-    except Exception as e:
-        st.error(f"❌ Failed to save: {e}")
 
 
 # # Save Completed Stores Button
