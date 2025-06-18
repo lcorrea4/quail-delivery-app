@@ -300,8 +300,7 @@ if st.button("💾 Save Completed Stores"):
     new_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
     try:
         today = pd.Timestamp(datetime.today().date())
-        bucket_start_day = ((today.day - 1) // 5) * 5 + 1
-        bucket_start_date = today.replace(day=bucket_start_day)
+        bucket_start_date = get_bucket_date(today)
 
         if defer_toggle:
             # --- Defer stores ---
