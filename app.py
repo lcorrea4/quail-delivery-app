@@ -135,7 +135,7 @@ with st.expander("📤 Upload Excel File", expanded=False):
     
     if uploaded_file:
         try:
-            completed_sheet.clear()
+            sheet_completed.clear()
             
             # --- Load and slice raw data ---
             raw_df = pd.read_excel(uploaded_file, sheet_name="Sheet1", header=None)
