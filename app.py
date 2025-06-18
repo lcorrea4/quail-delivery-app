@@ -224,25 +224,14 @@ def abbreviate_completed_id(store_id):
 def get_bucket_date(visit_date):
     if pd.isna(visit_date):
         return pd.NaT
-    
-    day = visit_date.day
-    month = visit_date.month
-    year = visit_date.year
-    
-    # Bucket start days fixed for each month
-    bucket_starts = [15, 20, 25]
-    last_day = pd.Period(visit_date, freq='M').days_in_month
-    bucket_starts.append(last_day)
-    
-    # Find the largest bucket start <= visit_date.day
-    bucket_day_candidates = [d for d in bucket_starts if d <= day]
-    if bucket_day_candidates:
-        bucket_day = max(bucket_day_candidates)
-    else:
-        bucket_day = bucket_starts[0]  # fallback to earliest bucket, e.g., 15
 
-    
-    return visit_date.replace(day=bucket_day)
+    visit_date = pd.to_datetime(visit_date).date()
+    start = datetime.today().date().replace(day=1)  # Start from 1st of the current month
+    days_since_start = (visit_date - start).days
+
+    bucket_start = start + timedelta(days=(days_since_start // 5) * 5)
+    return pd.Timestamp(bucket_start)
+
 
 
 
