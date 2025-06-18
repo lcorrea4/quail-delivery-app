@@ -394,7 +394,7 @@ if st.button("💾 Save Completed Stores"):
         combined_df = pd.DataFrame({"store_id": combined_ids})
         set_with_dataframe(completed_sheet, combined_df)
 
-        if push_to_next_week
+        if push_to_next_week:
             try:
                 #Access or create PushNextWeekSheet
                 try:
