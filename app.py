@@ -369,6 +369,8 @@ def get_bucket_date(visit_date):
 
 completed_input = st.text_input("✅ Enter completed store numbers (comma-separated):")
 
+push_to_next_week = st.toggle("⏭️ Push these stores to next week")
+
 if st.button("💾 Save Completed Stores"):
     new_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
     try:
@@ -392,7 +394,7 @@ if st.button("💾 Save Completed Stores"):
         combined_df = pd.DataFrame({"store_id": combined_ids})
         set_with_dataframe(completed_sheet, combined_df)
 
-        if st.toggle("⏭️ Push these stores to next week"):
+        if push_to_next_week
             try:
                 #Access or create PushNextWeekSheet
                 try:
