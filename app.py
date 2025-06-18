@@ -226,11 +226,18 @@ def get_bucket_date(visit_date):
         return pd.NaT
 
     visit_date = pd.to_datetime(visit_date).date()
-    start = datetime.today().date().replace(day=1)  # Start from 1st of the current month
-    days_since_start = (visit_date - start).days
+    
+    # Define anchor start date
+    anchor = datetime(2025, 5, 31).date()
+    
+    # Calculate number of days since anchor
+    delta_days = (visit_date - anchor).days
+    
+    # Round down to nearest multiple of 5
+    bucket_offset = (delta_days // 5) * 5
+    bucket_date = anchor + timedelta(days=bucket_offset)
 
-    bucket_start = start + timedelta(days=(days_since_start // 5) * 5)
-    return pd.Timestamp(bucket_start)
+    return pd.Timestamp(bucket_date)
 
 
 
