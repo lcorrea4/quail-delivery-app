@@ -296,7 +296,7 @@ if st.button("💾 Save Completed Stores"):
     new_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
     try:
         if defer_toggle:
-            # Defer stores to next 5-day bucket
+            # Defer stores
             df_sheet["Name_abbr"] = df_sheet["Name"].apply(abbreviate_store_name)
 
             for store_id in new_ids:
@@ -310,24 +310,11 @@ if st.button("💾 Save Completed Stores"):
                         df_sheet.loc[match_idx[0], "Visit Date"] = new_date
                         df_sheet.loc[match_idx[0], "bucket_date"] = get_bucket_date(new_date)
 
-            # Overwrite the Google Sheet with the updated delivery plan
             sheet.clear()
             set_with_dataframe(sheet, df_sheet.drop(columns=["Name_abbr"]))
-
             st.success("✅ Store(s) deferred to next 5-day bucket.")
-            
-            # Reload df_sheet from updated Google Sheet after deferring
-            df_sheet = get_as_dataframe(sheet).dropna(how="all")
-            
-            # Recompute dates and columns
-            df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
-            df_sheet["Visit Date"] = pd.to_datetime(df_sheet["Visit Date"], errors="coerce")
-            df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
-            df_sheet["store_group"] = df_sheet["Name"].apply(normalize_store)
-            df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
-
         else:
-            # Save as completed
+            # Complete stores
             try:
                 completed_sheet = spreadsheet.worksheet("Completed")
             except gspread.exceptions.WorksheetNotFound:
@@ -342,39 +329,19 @@ if st.button("💾 Save Completed Stores"):
             completed_sheet.clear()
             combined_df = pd.DataFrame({"store_id": combined_ids})
             set_with_dataframe(completed_sheet, combined_df)
-
             st.success("✅ Completed stores saved!")
-            
-        # --- Build 5-day agenda DataFrame ---
-        agenda_data = []
-        for bucket_date, group in df_sheet.groupby("bucket_date"):
-            row = {
-                "5-day-bucket-date": bucket_date.strftime("%-m/%-d"),  # e.g. 6/15
-                "Publix": ", ".join(group[group["store_group"] == "Publix"]["Name"].unique()),
-                "Sedanos": ", ".join(group[group["store_group"] == "Sedanos"]["Name"].unique()),
-                "Fresco y Mas": ", ".join(group[group["store_group"] == "Fresco y Mas"]["Name"].unique()),
-            }
-            agenda_data.append(row)
-        
-        agenda_df = pd.DataFrame(agenda_data)
-        
-        # --- Apply wrapping and crossing out ---
-        for col in ["Publix", "Sedanos", "Fresco y Mas"]:
-            if col in agenda_df.columns:
-                agenda_df[col] = agenda_df[col].apply(lambda x: cross_out_stores(x, completed_ids))
-                agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
-        
-        
-        
-        # Convert DataFrame to HTML
-        agenda_html = agenda_df.to_html(escape=False, index=False)
-        
-        # Display as HTML in Streamlit
-        st.markdown("### 📅 5-Day Delivery Agenda")
-        st.markdown(agenda_html, unsafe_allow_html=True)
-    
+
+        # Reload sheet after changes
+        df_sheet = get_as_dataframe(sheet).dropna(how="all")
+        df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
+        df_sheet["Visit Date"] = pd.to_datetime(df_sheet["Visit Date"], errors="coerce")
+        df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
+        df_sheet["store_group"] = df_sheet["Name"].apply(normalize_store)
+        df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
+
     except Exception as e:
         st.error(f"❌ Failed to save: {e}")
+
 
 
 
@@ -407,6 +374,49 @@ df_sheet["store_group"] = df_sheet["Name"].apply(normalize_store)
 
 df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
 
+# Reload completed store IDs (for crossing out)
+try:
+    completed_sheet = spreadsheet.worksheet("Completed")
+    completed_df = get_as_dataframe(completed_sheet).dropna(how="all")
+    completed_ids = completed_df["store_id"].astype(str).str.strip().tolist()
+except Exception:
+    completed_ids = []
+
+completed_ids = [abbreviate_completed_id(x) for x in completed_ids]
+
+# Filter for future buckets
+today = pd.Timestamp(datetime.today().date())
+today_day = today.day
+today_bucket_day = (today_day // 5) * 5
+if today_bucket_day == 0:
+    today_bucket_day = 5
+today_bucket_date = today.replace(day=today_bucket_day)
+
+df_sheet = df_sheet[df_sheet["bucket_date"] >= today_bucket_date]
+
+# Build Agenda
+agenda_data = []
+for bucket_date, group in df_sheet.groupby("bucket_date"):
+    row = {
+        "5-day-bucket-date": bucket_date.strftime("%-m/%-d"),
+        "Publix": ", ".join(group[group["store_group"] == "Publix"]["Name"].unique()),
+        "Sedanos": ", ".join(group[group["store_group"] == "Sedanos"]["Name"].unique()),
+        "Fresco y Mas": ", ".join(group[group["store_group"] == "Fresco y Mas"]["Name"].unique()),
+    }
+    agenda_data.append(row)
+
+agenda_df = pd.DataFrame(agenda_data)
+
+for col in ["Publix", "Sedanos", "Fresco y Mas"]:
+    if col in agenda_df.columns:
+        agenda_df[col] = agenda_df[col].apply(lambda x: cross_out_stores(x, completed_ids))
+        agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
+
+agenda_html = agenda_df.to_html(escape=False, index=False)
+
+# Display Agenda
+st.markdown("### 📅 5-Day Delivery Agenda")
+st.markdown(agenda_html, unsafe_allow_html=True)
 
 
 
