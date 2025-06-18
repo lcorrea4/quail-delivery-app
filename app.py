@@ -28,7 +28,12 @@ def get_bucket_date(visit_date):
     bucket_starts.append(last_day)
     
     # Find the largest bucket start <= visit_date.day
-    bucket_day = max([d for d in bucket_starts if d <= day])
+    bucket_day_candidates = [d for d in bucket_starts if d <= day]
+    if bucket_day_candidates:
+        bucket_day = max(bucket_day_candidates)
+    else:
+        bucket_day = bucket_starts[0]  # fallback to earliest bucket, e.g., 15
+
     
     return visit_date.replace(day=bucket_day)
 
