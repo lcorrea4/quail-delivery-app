@@ -398,7 +398,7 @@ if st.button("💾 Save Completed Stores"):
                 try:
                     push_sheet = spreadsheet.worksheet("PushNextWeek")
                 except gspread.exceptions.WorksheetNotFound:
-                    push_sheet = spreadsheet.add_worksheet(title="PushNextWeek", rows="100", cols="1"
+                    push_sheet = spreadsheet.add_worksheet(title="PushNextWeek", rows="100", cols="1")
 
                 #Load exsisting push IDs
                 push_df = get_as_dataframe(push_sheet).dropna(how="all")
