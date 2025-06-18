@@ -398,7 +398,7 @@ if st.button("💾 Save Completed Stores"):
                     push_sheet = spreadsheet.worksheet("PushNextWeek")
                 except gspread.exceptions.WorksheetNotFound:
                     push_sheet = spreadsheet.add_worksheet(title="PushNextWeek", rows="100", cols="1")
-        
+
                 # Try to get push_ids safely
                 try:
                     push_df = get_as_dataframe(push_sheet).dropna(how="all")
@@ -408,21 +408,55 @@ if st.button("💾 Save Completed Stores"):
                         push_ids = set()
                 except:
                     push_ids = set()
-        
+
                 # Combine and deduplicate
                 combined_push_ids = sorted(push_ids.union(set(new_ids)))
-        
+
                 # Save back to sheet
                 push_sheet.clear()
                 set_with_dataframe(push_sheet, pd.DataFrame({"store_id": combined_push_ids}))
                 st.success("⏭️ Pushed stores saved to next week!")
+
+                # ⏭️ Recalculate bucket_date immediately after pushing
+                try:
+                    delivery_days = [5, 10, 15, 20, 25, 30]
+
+                    def get_next_bucket(current_date):
+                        if pd.isna(current_date):
+                            return current_date
+                        current_day = current_date.day
+                        for day in delivery_days:
+                            if current_day < day:
+                                try:
+                                    return current_date.replace(day=day)
+                                except ValueError:
+                                    continue
+                        try:
+                            return current_date.replace(day=30)
+                        except ValueError:
+                            next_month = (current_date + pd.DateOffset(months=1)).replace(day=1)
+                            last_day = (next_month - pd.Timedelta(days=1)).day
+                            return current_date.replace(day=last_day)
+
+                    # Abbreviate names for matching
+                    df_sheet["Name_abbr"] = df_sheet["Name"].apply(lambda x: x.strip().upper() if isinstance(x, str) else "")
+                    df_sheet["was_pushed"] = df_sheet["Name_abbr"].apply(
+                        lambda x: any(pid.upper() in x for pid in combined_push_ids)
+                    )
+
+                    # Shift Visit Date & update bucket
+                    df_sheet.loc[df_sheet["was_pushed"], "Visit Date"] = df_sheet.loc[df_sheet["was_pushed"], "Visit Date"].apply(get_next_bucket)
+                    df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
+                except Exception as e:
+                    st.error(f"❌ Error reprocessing pushed stores: {e}")
+
             except Exception as e:
                 st.error(f"❌ Failed to save pushed stores: {e}")
 
-                                                           
         st.success("✅ Completed stores saved!")
     except Exception as e:
         st.error(f"❌ Failed to save completed stores: {e}")
+
 
 
 # --- Load completed stores from "Completed" sheet ---
