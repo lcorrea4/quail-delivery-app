@@ -290,8 +290,6 @@ with st.expander("Agenda Data", expanded = False):
 
 completed_input = st.text_input("✅ Enter completed store numbers (comma-separated):")
 
-push_to_next_week = st.toggle("⏭️ Push these stores to next week")
-
 if st.button("💾 Save Completed Stores"):
     new_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
     try:
