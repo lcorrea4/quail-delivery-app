@@ -403,10 +403,17 @@ if st.button("💾 Save Completed Stores"):
                     push_sheet = spreadsheet.add_worksheet(title="PushNextWeek", rows="100", cols="1")
 
                 #Load exsisting push IDs
-                push_df = get_as_dataframe(push_sheet).dropna(how="all")
-                push_ids = set()
-                if not push_df.empty and "store_id" in push_df.columns:
-                    push_ids = set(push_df["store_id"].astype(str).str.strip())
+                # Try to get push_ids safely
+                try:
+                    push_df = get_as_dataframe(push_sheet).dropna(how="all")
+                    if not push_df.empty and "store_id" in push_df.columns:
+                        push_ids = set(push_df["store_id"].astype(str).str.strip())
+                    else:
+                        push_ids = set()
+                except:
+                    # Sheet is empty or doesn't have headers yet
+                    push_ids = set()
+
 
                 #Combine and Save Push-to-Next-Week Stores
                 combine_push_ids = sorted(push_ids.union(new_ids))
