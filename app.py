@@ -391,7 +391,29 @@ if st.button("💾 Save Completed Stores"):
         completed_sheet.clear()
         combined_df = pd.DataFrame({"store_id": combined_ids})
         set_with_dataframe(completed_sheet, combined_df)
-        
+
+        if st.toggle("⏭️ Push these stores to next week"):
+            try:
+                #Access or create PushNextWeekSheet
+                try:
+                    push_sheet = spreadsheet.worksheet("PushNextWeek")
+                except gspread.exceptions.WorksheetNotFound:
+                    push_sheet = spreadsheet.add_worksheet(title="PushNextWeek", rows="100", cols="1"
+
+                #Load exsisting push IDs
+                push_df = get_as_dataframe(push_sheet).dropna(how="all")
+                push_ids = set()
+                if not push_df.empty and "store_id" in push_df.columns:
+                    push_ids = set(push_df["store_id"].astype(str).str.strip()
+
+                #Combine and Save Push-to-Next-Week Stores
+                combine_push_ids = sorted(push_ids.union(new_ids))
+                push_sheet.clear()
+                push_df_new = pd.DataFrame({"store_id": combined_push_ids})
+                set_with_dataframe(push_sheet, push_df_new)
+            except Exception as push_error:
+                st.error(f"❌ Failed to save pushed stores: {push_error}")
+                                                           
         st.success("✅ Completed stores saved!")
     except Exception as e:
         st.error(f"❌ Failed to save completed stores: {e}")
