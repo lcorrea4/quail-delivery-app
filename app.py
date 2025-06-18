@@ -8,6 +8,94 @@ import json
 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
 import calendar
 
+# --- Normalize store names for grouping ---
+def normalize_store(name):
+    if pd.isna(name):
+        return ""
+    name = name.lower().replace(" ", "")
+    if "publix" in name:
+        return "Publix"
+    elif "sedano" in name:
+        return "Sedanos"
+    elif "fresco" in name:
+        return "Fresco y Mas"
+    else:
+        return "Other"
+
+# Abbreviate completed store names to match df_sheet["Name"]
+def abbreviate_completed_id(store_id):
+    store_id = store_id.strip().lower()
+    if store_id.startswith("publix"):
+        return "P" + store_id.replace("publix", "").strip().title().replace(" ", "")
+    elif store_id.startswith("sedano") or store_id.startswith("sedano's"):
+        return "S" + store_id.replace("sedano's", "").replace("sedanos", "").strip().title().replace(" ", "")
+    elif store_id.startswith("fresco"):
+        return "F" + store_id.replace("fresco y mas", "").strip().title().replace(" ", "")
+    else:
+        return store_id.title().replace(" ", "")
+
+# Helper to calculate bucket
+def get_bucket_date(visit_date):
+    if pd.isna(visit_date):
+        return None
+    visit_date = pd.to_datetime(visit_date)
+    day = visit_date.day
+    bucket_day = (day // 5) * 5
+    if bucket_day == 0:
+        bucket_day = 5
+    try:
+        return visit_date.replace(day=bucket_day)
+    except ValueError:
+        next_month = (visit_date + pd.DateOffset(months=1)).replace(day=1)
+        last_day = (next_month - pd.Timedelta(days=1)).day
+        return visit_date.replace(day=last_day)
+
+# --- Define cross-out function ---
+def cross_out_stores(cell_value, completed_ids):
+    if pd.isna(cell_value) or not isinstance(cell_value, str):
+        return cell_value
+
+    parts = cell_value.replace("<br>", ", ").split(",")
+    crossed_parts = []
+    for name in parts:
+        name = name.strip()
+        if any(store_id.strip().lower() in name.lower() for store_id in completed_ids):
+            crossed_parts.append(f"<span style='text-decoration: line-through; color: #999;'>❌ {name}</span>")
+        else:
+            crossed_parts.append(name)
+
+    # Wrap every 8 entries with line breaks
+    wrapped = []
+    for i in range(0, len(crossed_parts), 8):
+        wrapped.append(", ".join(crossed_parts[i:i+8]))
+    return "<br>".join(wrapped)
+
+def abbreviate_store_name(name):
+    if pd.isna(name):
+        return name
+    name = name.strip().lower()
+    if "publix" in name:
+        return "P" + name.replace("publix", "").strip().title().replace(" ", "")
+    elif "sedano" in name:
+        return "S" + name.replace("sedano's", "").replace("sedanos", "").strip().title().replace(" ", "")
+    elif "fresco" in name:
+        return "F" + name.replace("fresco y mas", "").strip().title().replace(" ", "")
+    else:
+        return name.title().replace(" ", "")
+
+
+def wrap_text_after_n_commas(text, limit=8):
+    if pd.isna(text) or not isinstance(text, str):
+        return text
+    items = [item.strip() for item in text.split(",")]
+    wrapped = []
+    for i in range(0, len(items), limit):
+        wrapped.append(", ".join(items[i:i+limit]))
+    return "<br>".join(wrapped)
+
+def apply_unicode_strikethrough(text):
+    return ''.join(char + '\u0336' for char in text)
+
 def draw_calendar(delivery_df):
     st.subheader("🗓️ Delivery Calendar")
 
@@ -47,6 +135,7 @@ def draw_calendar(delivery_df):
                             st.write(f"- {store}")
                 else:
                     cols[i].markdown(f"{label}")
+                    
 
 # --- Function to Calculate Dates ---
 def calculate_delivery_dates(df):
@@ -346,50 +435,9 @@ with st.expander("Agenda Data", expanded = False):
 
 
 
-# Helper to calculate bucket
-def get_bucket_date(visit_date):
-    if pd.isna(visit_date):
-        return None
-    visit_date = pd.to_datetime(visit_date)
-    day = visit_date.day
-    bucket_day = (day // 5) * 5
-    if bucket_day == 0:
-        bucket_day = 5
-    try:
-        return visit_date.replace(day=bucket_day)
-    except ValueError:
-        next_month = (visit_date + pd.DateOffset(months=1)).replace(day=1)
-        last_day = (next_month - pd.Timedelta(days=1)).day
-        return visit_date.replace(day=last_day)
-
-
-
 completed_input = st.text_input("✅ Enter completed store numbers (comma-separated):")
 
 push_to_next_week = st.toggle("⏭️ Push these stores to next week")
-
-def build_and_display_agenda(df_sheet, completed_ids):
-    agenda_data = []
-    for bucket_date, group in df_sheet.groupby("bucket_date"):
-        row = {
-            "5-day-bucket-date": bucket_date.strftime("%-m/%-d"),
-            "Publix": ", ".join(group[group["store_group"] == "Publix"]["Name"].unique()),
-            "Sedanos": ", ".join(group[group["store_group"] == "Sedanos"]["Name"].unique()),
-            "Fresco y Mas": ", ".join(group[group["store_group"] == "Fresco y Mas"]["Name"].unique()),
-        }
-        agenda_data.append(row)
-
-    agenda_df = pd.DataFrame(agenda_data)
-
-    for col in ["Publix", "Sedanos", "Fresco y Mas"]:
-        if col in agenda_df.columns:
-            agenda_df[col] = agenda_df[col].apply(lambda x: cross_out_stores(x, completed_ids))
-            agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
-
-    agenda_html = agenda_df.to_html(escape=False, index=False)
-    st.markdown("### 📅 5-Day Delivery Agenda")
-    st.markdown(agenda_html, unsafe_allow_html=True)
-
 
 if st.button("💾 Save Completed Stores"):
     new_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
@@ -421,7 +469,7 @@ if st.button("💾 Save Completed Stores"):
                     push_sheet = spreadsheet.worksheet("PushNextWeek")
                 except gspread.exceptions.WorksheetNotFound:
                     push_sheet = spreadsheet.add_worksheet(title="PushNextWeek", rows="100", cols="1")
-
+        
                 # Try to get push_ids safely
                 try:
                     push_df = get_as_dataframe(push_sheet).dropna(how="all")
@@ -431,60 +479,21 @@ if st.button("💾 Save Completed Stores"):
                         push_ids = set()
                 except:
                     push_ids = set()
-
+        
                 # Combine and deduplicate
                 combined_push_ids = sorted(push_ids.union(set(new_ids)))
-
+        
                 # Save back to sheet
                 push_sheet.clear()
                 set_with_dataframe(push_sheet, pd.DataFrame({"store_id": combined_push_ids}))
                 st.success("⏭️ Pushed stores saved to next week!")
-
-                # ⏭️ Recalculate bucket_date immediately after pushing
-                try:
-                    delivery_days = [5, 10, 15, 20, 25, 30]
-
-                    def get_next_bucket(current_date):
-                        if pd.isna(current_date):
-                            return current_date
-                        current_day = current_date.day
-                        for day in delivery_days:
-                            if current_day < day:
-                                try:
-                                    return current_date.replace(day=day)
-                                except ValueError:
-                                    continue
-                        try:
-                            return current_date.replace(day=30)
-                        except ValueError:
-                            next_month = (current_date + pd.DateOffset(months=1)).replace(day=1)
-                            last_day = (next_month - pd.Timedelta(days=1)).day
-                            return current_date.replace(day=last_day)
-
-                    # Abbreviate names for matching
-                    df_sheet["Name_abbr"] = df_sheet["Name"].apply(lambda x: x.strip().upper() if isinstance(x, str) else "")
-                    df_sheet["was_pushed"] = df_sheet["Name_abbr"].apply(
-                        lambda x: any(pid.upper() in x for pid in combined_push_ids)
-                    )
-
-                    # Shift Visit Date & update bucket
-                    df_sheet.loc[df_sheet["was_pushed"], "Visit Date"] = df_sheet.loc[df_sheet["was_pushed"], "Visit Date"].apply(get_next_bucket)
-                    df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
-                except Exception as e:
-                    st.error(f"❌ Error reprocessing pushed stores: {e}")
-
             except Exception as e:
                 st.error(f"❌ Failed to save pushed stores: {e}")
 
+                                                           
         st.success("✅ Completed stores saved!")
-        # 🔄 Reload updated completed_ids from Google Sheet
-        completed_ids = [abbreviate_completed_id(x) for x in combined_ids]
-
-        build_and_display_agenda(df_sheet, completed_ids)
-
     except Exception as e:
         st.error(f"❌ Failed to save completed stores: {e}")
-
 
 
 # --- Load completed stores from "Completed" sheet ---
@@ -495,66 +504,12 @@ try:
 except Exception:
     completed_ids = []
 
-# Abbreviate completed store names to match df_sheet["Name"]
-def abbreviate_completed_id(store_id):
-    store_id = store_id.strip().lower()
-    if store_id.startswith("publix"):
-        return "P" + store_id.replace("publix", "").strip().title().replace(" ", "")
-    elif store_id.startswith("sedano") or store_id.startswith("sedano's"):
-        return "S" + store_id.replace("sedano's", "").replace("sedanos", "").strip().title().replace(" ", "")
-    elif store_id.startswith("fresco"):
-        return "F" + store_id.replace("fresco y mas", "").strip().title().replace(" ", "")
-    else:
-        return store_id.title().replace(" ", "")
-
 
 # Normalize all completed IDs
 completed_ids = [abbreviate_completed_id(x) for x in completed_ids]
 
     
 df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
-
-# --- Apply Push Logic to Delay Certain Stores ---
-try:
-    push_sheet = spreadsheet.worksheet("PushNextWeek")
-    push_df = get_as_dataframe(push_sheet).dropna(how="all")
-
-    if not push_df.empty and "store_id" in push_df.columns:
-        push_ids = push_df["store_id"].astype(str).str.strip().tolist()
-        push_ids = [abbreviate_completed_id(x) for x in push_ids]
-
-        # Define delivery windows (e.g., 5th, 10th, ..., 30th)
-        delivery_days = [5, 10, 15, 20, 25, 30]
-
-        def get_next_bucket(current_date):
-            if pd.isna(current_date):
-                return current_date
-            current_day = current_date.day
-            for day in delivery_days:
-                if current_day < day:
-                    try:
-                        return current_date.replace(day=day)
-                    except ValueError:
-                        continue
-            # If beyond last bucket, clamp to 30 or end of month
-            try:
-                return current_date.replace(day=30)
-            except ValueError:
-                next_month = (current_date + pd.DateOffset(months=1)).replace(day=1)
-                last_day = (next_month - pd.Timedelta(days=1)).day
-                return current_date.replace(day=last_day)
-
-        # Abbreviated Name column for matching
-        df_sheet["Name_abbr"] = df_sheet["Name"].apply(lambda x: x.strip().upper() if isinstance(x, str) else "")
-        df_sheet["was_pushed"] = df_sheet["Name_abbr"].apply(lambda x: any(pid.upper() in x for pid in push_ids))
-
-        # Shift Visit Dates
-        df_sheet.loc[df_sheet["was_pushed"], "Visit Date"] = df_sheet.loc[df_sheet["was_pushed"], "Visit Date"].apply(get_next_bucket)
-        df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
-
-except Exception as e:
-    st.error(f"❌ Error processing pushed stores: {e}")
-
 
 # --- Filter future or current buckets only ---
 today = pd.Timestamp(datetime.today().date())
@@ -566,79 +521,36 @@ today_bucket_date = today.replace(day=today_bucket_day)
 
 df_sheet = df_sheet[df_sheet["bucket_date"] >= today_bucket_date]
 
-
-
-# --- Normalize store names for grouping ---
-def normalize_store(name):
-    if pd.isna(name):
-        return ""
-    name = name.lower().replace(" ", "")
-    if "publix" in name:
-        return "Publix"
-    elif "sedano" in name:
-        return "Sedanos"
-    elif "fresco" in name:
-        return "Fresco y Mas"
-    else:
-        return "Other"
-
 df_sheet["store_group"] = df_sheet["Name"].apply(normalize_store)
-
-def abbreviate_store_name(name):
-    if pd.isna(name):
-        return name
-    name = name.strip().lower()
-    if "publix" in name:
-        return "P" + name.replace("publix", "").strip().title().replace(" ", "")
-    elif "sedano" in name:
-        return "S" + name.replace("sedano's", "").replace("sedanos", "").strip().title().replace(" ", "")
-    elif "fresco" in name:
-        return "F" + name.replace("fresco y mas", "").strip().title().replace(" ", "")
-    else:
-        return name.title().replace(" ", "")
-
-
-def wrap_text_after_n_commas(text, limit=8):
-    if pd.isna(text) or not isinstance(text, str):
-        return text
-    items = [item.strip() for item in text.split(",")]
-    wrapped = []
-    for i in range(0, len(items), limit):
-        wrapped.append(", ".join(items[i:i+limit]))
-    return "<br>".join(wrapped)
-
-def apply_unicode_strikethrough(text):
-    return ''.join(char + '\u0336' for char in text)
-
-
 
 df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
 
 
+# --- Build 5-day agenda DataFrame ---
+agenda_data = []
+for bucket_date, group in df_sheet.groupby("bucket_date"):
+    row = {
+        "5-day-bucket-date": bucket_date.strftime("%-m/%-d"),  # e.g. 6/15
+        "Publix": ", ".join(group[group["store_group"] == "Publix"]["Name"].unique()),
+        "Sedanos": ", ".join(group[group["store_group"] == "Sedanos"]["Name"].unique()),
+        "Fresco y Mas": ", ".join(group[group["store_group"] == "Fresco y Mas"]["Name"].unique()),
+    }
+    agenda_data.append(row)
+
+agenda_df = pd.DataFrame(agenda_data)
 
 
 
-# --- Define cross-out function ---
-def cross_out_stores(cell_value, completed_ids):
-    if pd.isna(cell_value) or not isinstance(cell_value, str):
-        return cell_value
-
-    parts = cell_value.replace("<br>", ", ").split(",")
-    crossed_parts = []
-    for name in parts:
-        name = name.strip()
-        if any(store_id.strip().lower() in name.lower() for store_id in completed_ids):
-            crossed_parts.append(f"<span style='text-decoration: line-through; color: #999;'>❌ {name}</span>")
-        else:
-            crossed_parts.append(name)
-
-    # Wrap every 8 entries with line breaks
-    wrapped = []
-    for i in range(0, len(crossed_parts), 8):
-        wrapped.append(", ".join(crossed_parts[i:i+8]))
-    return "<br>".join(wrapped)
 
 
+
+
+
+# --- Apply wrapping and crossing out ---
+for col in ["Publix", "Sedanos", "Fresco y Mas"]:
+    if col in agenda_df.columns:
+        agenda_df[col] = agenda_df[col].apply(lambda x: cross_out_stores(x, completed_ids))
+        agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
 
 
 
@@ -648,320 +560,6 @@ agenda_html = agenda_df.to_html(escape=False, index=False)
 # Display as HTML in Streamlit
 st.markdown("### 📅 5-Day Delivery Agenda")
 st.markdown(agenda_html, unsafe_allow_html=True)
-
-
-
-
-# # Step 5: Display in Streamlit
-# st.subheader("🗓️ 5-Day Bucket Agenda Table")
-# st.dataframe(agenda_df, use_container_width=True)
-
-
-# st.set_page_config(layout="wide")
-# st.title("📦 Quality Quail Eggs")
-# st.subheader("📅 Upcoming Deliveries:")
-
-# uploaded_file = st.file_uploader("Upload Excel File with Historical Deliveries", type=["xlsx"])
-    
-
-# if uploaded_file:
-#     try:
-#         # --- Load and slice raw data ---
-#         raw_df = pd.read_excel(uploaded_file, sheet_name="Sheet1", header=None)
-
-#         start_row = raw_df[2][raw_df[2] == "QUAIL EGGS X 10 (QUAIL EGGS X 10)"].index[0] + 1
-#         end_row = raw_df[2][raw_df[2] == "Total QUAIL EGGS X 10 (QUAIL EGGS X 10)"].index[0] - 1
-#         target_cols = [5, 7, 9, 11, 13, 15, 17, 19, 21]
-#         df_hist = raw_df.loc[start_row:end_row, target_cols].copy()
-
-#         # Rename columns
-#         df_hist.columns = [
-#             "Type", "Date", "Num", "Memo", "Name",
-#             "Qty", "Sales Price", "Amount", "Balance"
-#         ]
-#         # Raw input as a multiline string (paste your actual list here)
-#         raw_store_list = """
-#         - Fresco y Mas 1717 - 30
-#         - Fresco y Mas 201 - 20
-#         - Fresco y Mas 231 - 10
-#         - Fresco y Mas 235 - 25
-#         - Fresco y Mas 237 - 30
-#         - Fresco y Mas 239 - 30
-#         - Fresco y Mas 242 - 20
-#         - Fresco y Mas 243 - 15
-#         - Fresco y Mas 2450 - 40
-#         - Fresco y Mas 252 - 20
-#         - Fresco y Mas 270 - 15
-#         - Fresco y Mas 286 - 25
-#         - Fresco y Mas 287 - 20
-#         - Fresco y Mas 292 - 10
-#         - Fresco y Mas 304 - 60
-#         - Fresco y Mas 353 - 20
-#         - Fresco y Mas 359 - 20
-#         - Fresco y Mas 361 - 20
-#         - Fresco y Mas 366 - 15
-#         - Fresco y Mas 384 - 20
-#         - Fresco y Mas 385 - 15
-#         - Fresco y Mas 387 - 15
-#         - Fresco y Mas 388 - 20
-#         - Fresco y Mas 697 - 50
-#         - Fresco y Mas 745 - 60
-#         - Fresco y mas 283 - 20
-#         - Publix 10 - 15
-#         - Publix 1009 - 20
-#         - Publix 1017 - 20
-#         - Publix 1036 - 40
-#         - Publix 1062 - 25
-#         - Publix 1072 - 15
-#         - Publix 1094 - 30
-#         - Publix 1097 - 20
-#         - Publix 1124 - 40
-#         - Publix 1129 - 15
-#         - Publix 1151 - 15
-#         - Publix 1209 - 30
-#         - Publix 1230 - 25
-#         - Publix 1236 - 15
-#         - Publix 1264 - 10
-#         - Publix 127 - 25
-#         - Publix 1273 - 30
-#         - Publix 1288 - 30
-#         - Publix 1297 - 35
-#         - Publix 1382 - 15
-#         - Publix 1384 - 30
-#         - Publix 1386 - 30
-#         - Publix 1389 - 35
-#         - Publix 1397 - 15
-#         - Publix 1405 - 40
-#         - Publix 1423 - 25
-#         - Publix 1467 - 20
-#         - Publix 1469 - 20
-#         - Publix 1491 - 50
-#         - Publix 1492 - 15
-#         - Publix 1494 - 15
-#         - Publix 1526 - 40
-#         - Publix 1536 - 15
-#         - Publix 1561 - 30
-#         - Publix 1571 - 15
-#         - Publix 1614 - 25
-#         - Publix 1699 - 40
-#         - Publix 1715 - 30
-#         - Publix 1748 - 20
-#         - Publix 1776 - 50
-#         - Publix 1803 - 30
-#         - Publix 1804 - 20
-#         - Publix 21 - 30
-#         - Publix 222 - 20
-#         - Publix 223 - 30
-#         - Publix 238 - 20
-#         - Publix 24 - 10
-#         - Publix 242 - 60
-#         - Publix 246 - 40
-#         - Publix 262 - 20
-#         - Publix 293 - 15
-#         - Publix 302 - 50
-#         - Publix 31 - 15
-#         - Publix 327 - 20
-#         - Publix 343 - 15
-#         - Publix 375 - 20
-#         - Publix 402 - 15
-#         - Publix 406 - 30
-#         - Publix 421 - 25
-#         - Publix 44 - 20
-#         - Publix 454 - 20
-#         - Publix 50 - 20
-#         - Publix 509 - 40
-#         - Publix 51 - 15
-#         - Publix 510 - 25
-#         - Publix 529 - 20
-#         - Publix 54 - 20
-#         - Publix 550 - 40
-#         - Publix 56 - 40
-#         - Publix 581 - 20
-#         - Publix 583 - 20
-#         - Publix 586 - 20
-#         - Publix 588 - 30
-#         - Publix 600 - 30
-#         - Publix 621 - 30
-#         - Publix 655 - 25
-#         - Publix 657 - 40
-#         - Publix 658 - 20
-#         - Publix 669 - 20
-#         - Publix 674 - 30
-#         - Publix 70 - 25
-#         - Publix 714 - 20
-#         - Publix 715 - 40
-#         - Publix 747 - 30
-#         - Publix 750 - 50
-#         - Publix 759 - 30
-#         - Publix 794 - 30
-#         - Publix 832 - 15
-#         - Publix 835 - 30
-#         - Publix 84 - 30
-#         - Publix 848 - 50
-#         - Publix 861 - 50
-#         - Publix 889 - 25
-#         - Sedano's 04 - 20
-#         - Sedano's 05 - 30
-#         - Sedano's 08 - 20
-#         - Sedano's 09 - 25
-#         - Sedano's 10 - 25
-#         - Sedano's 11 - 15
-#         - Sedano's 14 - 20
-#         - Sedano's 16 - 30
-#         - Sedano's 17 - 20
-#         - Sedano's 18 - 30
-#         - Sedano's 20 - 25
-#         - Sedano's 21 - 30
-#         - Sedano's 22 - 30
-#         - Sedano's 23 - 25
-#         - Sedano's 24 - 25
-#         - Sedano's 26 - 25
-#         - Sedano's 27 - 50
-#         - Sedano's 28 - 20
-#         - Sedano's 29 - 40
-#         - Sedano's 31 - 30
-#         - Sedano's 32 - 40
-#         - Sedano's 33 - 20
-#         - Sedano's 34 - 40
-#         - Sedano's 36 - 25
-#         - Sedano's 37 - 40
-#         - Sedano's 38 - 15
-#         - Sedano's 41 - 40
-#         - Sedano's 42 - 25
-#         - Sedano's 43 - 30
-#         - Sedano's 7 - 30
-#         - sedanos 1 - 40
-#         """
-        
-#         store_days = []
-#         for line in raw_store_list.strip().splitlines():
-#             cleaned = line.lstrip("- ").strip()
-#             if " - " in cleaned:
-#                 store_name, days = cleaned.rsplit(" - ", 1)
-#                 store_days.append((store_name.strip(), int(days.strip())))
-#         days_df = pd.DataFrame(store_days, columns=["Name", "depletion_days_estimate"])
-
-#         # Merge with historical deliveries
-#         df_hist = df_hist.merge(days_df, on="Name", how="left")
-
-#         st.success("✅ Historical delivery data loaded successfully!")
-
-#         st.dataframe(df_hist)
-
-#         # # --- Generate future delivery dates ---
-#         # last_deliveries = df_hist.sort_values("Date").groupby("Name", as_index=False).last()
-
-#         # calendar_rows = []
-#         # for _, row in last_deliveries.iterrows():
-#         #     store = row["Name"]
-#         #     last_date = pd.to_datetime(row["Date"])
-#         #     days_est = row.get("depletion_days_estimate")
-#         #     if pd.isna(days_est):
-#         #         continue
-#         #     visit_date = last_date + timedelta(days=days_est)
-#         #     while visit_date <= pd.Timestamp("2025-07-31"):
-#         #         if visit_date >= pd.Timestamp("2025-06-01"):
-#         #             calendar_rows.append({
-#         #                 "Store": store,
-#         #                 "Visit Date": visit_date.date()
-#         #             })
-#         #         visit_date += timedelta(days=days_est)
-
-#         # calendar_df = pd.DataFrame(calendar_rows).sort_values("Visit Date")
-#         # calendar_df["Visit Date"] = pd.to_datetime(calendar_df["Visit Date"])
-
-#         # # --- Prepare for calendar drawing ---
-#         # # Rename columns to match draw_calendar signature
-#         # calendar_df.rename(columns={"Visit Date": "Date", "Store": "Name"}, inplace=True)
-
-#         # # Draw calendar view
-#         # draw_calendar(calendar_df)
-
-#         # # --- Prepare 5-Day Bucket agenda view ---
-#         # calendar_df[["bucket_start", "5-Day Window"]] = calendar_df["Date"].apply(
-#         #     lambda d: pd.Series(get_5day_bucket(d))
-#         # )
-#         # calendar_df = calendar_df[calendar_df["bucket_start"] >= date.today()]
-
-#         # st.subheader("📅 Upcoming Deliveries: 5-Day Agenda View")
-
-#         # grouped = calendar_df.groupby(["bucket_start", "5-Day Window"])
-
-#         # if grouped.ngroups == 0:
-#         #     st.write("No upcoming deliveries found.")
-#         # else:
-#         #     sorted_groups = sorted(grouped, key=lambda x: x[0])
-#         #     for (bucket_start, group_label), items in sorted_groups:
-#         #         st.markdown(f"### 📌 {group_label}")
-#         #         agenda_table = items[["Name", "Date"]].copy()
-#         #         agenda_table["Date"] = agenda_table["Date"].dt.strftime("%m/%d/%Y")
-#         #         st.dataframe(agenda_table.rename(columns={"Name": "Store", "Date": "Visit Date"}), use_container_width=True)
-
-  
-#     except Exception as e:
-#         st.error(f"⚠️ Error loading file: {e}")
-
-# # --- UI ---
-# with st.expander("🔧 Show Experimental or Less Important Tools", expanded=False):
-#     st.title("📦 Quail Egg Delivery Tracker")
-#     st.subheader("📅 Upcoming Deliveries: 5-Day Agenda View")
-    
-#     # Use the updated session state DataFrame
-#     # Load dataframe from Google Sheet and store in session state
-#     if "df" not in st.session_state:
-#         df = get_as_dataframe(sheet).dropna(how='all')
-#         df = calculate_delivery_dates(df)
-#         st.session_state.df = df.copy()
-#     else:
-#         df = st.session_state.df.copy()
-    
-    
-    
-#     df = calculate_delivery_dates(df)
-#     df = df.dropna(subset=["expected_empty_date"])
-    
-    
-    
-    
-#     # Create a new column with the 5-day bucket
-#     df["delivery_week"] = df["expected_empty_date"].apply(get_5day_bucket)
-    
-    
-#     # Group by the 5-day bucket
-#     grouped = df.groupby("delivery_week")
-#     if grouped.ngroups == 0:
-#         st.write("No groups found. Check that 'expected_empty_date' values exist in your data.")
-#     else:
-#         for group, items in grouped:
-#             st.markdown(f"### 📌 {group}")
-#             agenda_table = items[["store_name", "address", "expected_empty_date", "days_until_empty"]].copy()
-#             agenda_table["expected_empty_date"] = agenda_table["expected_empty_date"].dt.strftime("%b %d")
-#             st.dataframe(agenda_table)
-    
-    
-    
-#     # Log new delivery
-#     st.subheader("📝 Log a New Delivery")
-#     with st.form("log_form"):
-#         store = st.text_input("Store Name")
-#         address = st.text_input("Address")
-#         delivery_date = st.date_input("Delivery Date", value=datetime.today())
-#         cartons = st.number_input("Cartons Delivered", min_value=1)
-#         depletion_days = st.number_input("Estimated Days to Depletion", min_value=1)
-#         submitted = st.form_submit_button("Submit Delivery")
-#         if submitted:
-#             new_row = pd.DataFrame([{
-#                 "store_name": store,
-#                 "address": address,
-#                 "last_delivery_date": pd.to_datetime(delivery_date),
-#                 "cartons_delivered": cartons,
-#                 "depletion_days_estimate": depletion_days
-#             }])
-#             df = pd.concat([df, new_row], ignore_index=True)
-#             df = calculate_delivery_dates(df)
-#             st.session_state.df = df.copy()
-#             set_with_dataframe(sheet, df.fillna(""))
-#             st.success(f"✅ Delivery logged for {store}")
     
 
 
