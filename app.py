@@ -642,12 +642,12 @@ def cross_out_stores(cell_value, completed_ids):
 
 
 
-# # Convert DataFrame to HTML
-# agenda_html = agenda_df.to_html(escape=False, index=False)
+# Convert DataFrame to HTML
+agenda_html = agenda_df.to_html(escape=False, index=False)
 
-# # Display as HTML in Streamlit
-# st.markdown("### 📅 5-Day Delivery Agenda")
-# st.markdown(agenda_html, unsafe_allow_html=True)
+# Display as HTML in Streamlit
+st.markdown("### 📅 5-Day Delivery Agenda")
+st.markdown(agenda_html, unsafe_allow_html=True)
 
 
 
