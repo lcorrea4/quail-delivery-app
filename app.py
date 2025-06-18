@@ -345,33 +345,33 @@ if st.button("💾 Save Completed Stores"):
 
             st.success("✅ Completed stores saved!")
             
-    # --- Build 5-day agenda DataFrame ---
-    agenda_data = []
-    for bucket_date, group in df_sheet.groupby("bucket_date"):
-        row = {
-            "5-day-bucket-date": bucket_date.strftime("%-m/%-d"),  # e.g. 6/15
-            "Publix": ", ".join(group[group["store_group"] == "Publix"]["Name"].unique()),
-            "Sedanos": ", ".join(group[group["store_group"] == "Sedanos"]["Name"].unique()),
-            "Fresco y Mas": ", ".join(group[group["store_group"] == "Fresco y Mas"]["Name"].unique()),
-        }
-        agenda_data.append(row)
-    
-    agenda_df = pd.DataFrame(agenda_data)
-    
-    # --- Apply wrapping and crossing out ---
-    for col in ["Publix", "Sedanos", "Fresco y Mas"]:
-        if col in agenda_df.columns:
-            agenda_df[col] = agenda_df[col].apply(lambda x: cross_out_stores(x, completed_ids))
-            agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
-    
-    
-    
-    # Convert DataFrame to HTML
-    agenda_html = agenda_df.to_html(escape=False, index=False)
-    
-    # Display as HTML in Streamlit
-    st.markdown("### 📅 5-Day Delivery Agenda")
-    st.markdown(agenda_html, unsafe_allow_html=True)
+        # --- Build 5-day agenda DataFrame ---
+        agenda_data = []
+        for bucket_date, group in df_sheet.groupby("bucket_date"):
+            row = {
+                "5-day-bucket-date": bucket_date.strftime("%-m/%-d"),  # e.g. 6/15
+                "Publix": ", ".join(group[group["store_group"] == "Publix"]["Name"].unique()),
+                "Sedanos": ", ".join(group[group["store_group"] == "Sedanos"]["Name"].unique()),
+                "Fresco y Mas": ", ".join(group[group["store_group"] == "Fresco y Mas"]["Name"].unique()),
+            }
+            agenda_data.append(row)
+        
+        agenda_df = pd.DataFrame(agenda_data)
+        
+        # --- Apply wrapping and crossing out ---
+        for col in ["Publix", "Sedanos", "Fresco y Mas"]:
+            if col in agenda_df.columns:
+                agenda_df[col] = agenda_df[col].apply(lambda x: cross_out_stores(x, completed_ids))
+                agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
+        
+        
+        
+        # Convert DataFrame to HTML
+        agenda_html = agenda_df.to_html(escape=False, index=False)
+        
+        # Display as HTML in Streamlit
+        st.markdown("### 📅 5-Day Delivery Agenda")
+        st.markdown(agenda_html, unsafe_allow_html=True)
     
     except Exception as e:
         st.error(f"❌ Failed to save: {e}")
