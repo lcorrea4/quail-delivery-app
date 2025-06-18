@@ -8,6 +8,21 @@ import json
 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
 import calendar
 
+def normalize_input_store_id(store_id):
+    # Lowercase & strip first
+    store_id = store_id.strip().lower()
+    # Match to abbreviation style used in df_sheet["Name"]
+    if store_id.startswith("p"):
+        return store_id.upper()
+    elif store_id.startswith("s"):
+        return store_id.upper()
+    elif store_id.startswith("f"):
+        return store_id.upper()
+    else:
+        # Fallback to titlecase no spaces
+        return store_id.title().replace(" ", "")
+
+
 # --- Normalize store names for grouping ---
 def normalize_store(name):
     if pd.isna(name):
@@ -38,17 +53,18 @@ def abbreviate_completed_id(store_id):
 def get_bucket_date(visit_date):
     if pd.isna(visit_date):
         return None
+
     visit_date = pd.to_datetime(visit_date)
     day = visit_date.day
-    bucket_day = (day // 5) * 5
-    if bucket_day == 0:
-        bucket_day = 5
+    bucket_day = ((day - 1) // 5) * 5 + 1  # e.g., 17 -> 15, 23 -> 21
+
     try:
         return visit_date.replace(day=bucket_day)
     except ValueError:
         next_month = (visit_date + pd.DateOffset(months=1)).replace(day=1)
         last_day = (next_month - pd.Timedelta(days=1)).day
         return visit_date.replace(day=last_day)
+
 
 # --- Define cross-out function ---
 def cross_out_stores(cell_value, completed_ids):
@@ -299,20 +315,30 @@ if "bucket_date" not in df_sheet.columns or df_sheet["bucket_date"].isna().any()
 if st.button("💾 Save Completed Stores"):
     new_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
     try:
+        # Make sure required columns exist
+        if "Visit Date" not in df_sheet.columns:
+            st.error("❌ 'Visit Date' column is missing in the sheet.")
+            st.stop()
+
+        if "bucket_date" not in df_sheet.columns or df_sheet["bucket_date"].isna().any():
+            df_sheet["Visit Date"] = pd.to_datetime(df_sheet["Visit Date"], errors="coerce")
+            df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
+
+        # Get current 5-day bucket date
         today = pd.Timestamp(datetime.today().date())
-        bucket_start_date = get_bucket_date(today)  # << USE YOUR LOGIC
+        current_bucket_date = get_bucket_date(today)
 
         if defer_toggle:
-            # --- Defer stores from current bucket only ---
             error_stores = []
             for store_id in new_ids:
                 store_id = store_id.strip()
                 match_idx = df_sheet[
                     (df_sheet["Name"] == store_id) &
-                    (df_sheet["bucket_date"] == bucket_start_date)
+                    (df_sheet["bucket_date"] == current_bucket_date)
                 ].index
 
                 if not match_idx.empty:
+                    # Defer Visit Date by 5 days
                     current_visit = df_sheet.loc[match_idx[0], "Visit Date"]
                     if pd.notna(current_visit):
                         new_visit = current_visit + timedelta(days=5)
@@ -324,7 +350,7 @@ if st.button("💾 Save Completed Stores"):
             if error_stores:
                 st.error(
                     f"❌ These stores were not found in the current 5-day bucket "
-                    f"({bucket_start_date.strftime('%-m/%-d')}): {', '.join(error_stores)}"
+                    f"({current_bucket_date.strftime('%-m/%-d')}): {', '.join(error_stores)}"
                 )
             else:
                 sheet.clear()
@@ -332,7 +358,7 @@ if st.button("💾 Save Completed Stores"):
                 st.success("✅ Store(s) deferred to next 5-day bucket.")
 
         else:
-            # --- Save completed store IDs ---
+            # Save completed stores
             try:
                 completed_sheet = spreadsheet.worksheet("Completed")
             except gspread.exceptions.WorksheetNotFound:
@@ -350,7 +376,7 @@ if st.button("💾 Save Completed Stores"):
 
             st.success("✅ Completed stores saved!")
 
-        # --- Refresh df_sheet and agenda after any change ---
+        # --- Refresh df_sheet after any change ---
         df_sheet = get_as_dataframe(sheet).dropna(how="all")
         df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
         df_sheet["Visit Date"] = pd.to_datetime(df_sheet["Visit Date"], errors="coerce")
@@ -360,6 +386,7 @@ if st.button("💾 Save Completed Stores"):
 
     except Exception as e:
         st.error(f"❌ Failed to save: {e}")
+
 
 
 
