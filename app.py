@@ -300,10 +300,10 @@ if st.button("💾 Save Completed Stores"):
     new_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
     try:
         today = pd.Timestamp(datetime.today().date())
-        bucket_start_date = get_bucket_date(today)
+        bucket_start_date = get_bucket_date(today)  # << USE YOUR LOGIC
 
         if defer_toggle:
-            # --- Defer stores ---
+            # --- Defer stores from current bucket only ---
             error_stores = []
             for store_id in new_ids:
                 store_id = store_id.strip()
@@ -322,14 +322,17 @@ if st.button("💾 Save Completed Stores"):
                     error_stores.append(store_id)
 
             if error_stores:
-                st.error(f"❌ These stores were not found in the current 5-day bucket ({bucket_start_date.strftime('%-m/%-d')}): {', '.join(error_stores)}")
+                st.error(
+                    f"❌ These stores were not found in the current 5-day bucket "
+                    f"({bucket_start_date.strftime('%-m/%-d')}): {', '.join(error_stores)}"
+                )
             else:
                 sheet.clear()
                 set_with_dataframe(sheet, df_sheet)
                 st.success("✅ Store(s) deferred to next 5-day bucket.")
 
         else:
-            # --- Save completed stores ---
+            # --- Save completed store IDs ---
             try:
                 completed_sheet = spreadsheet.worksheet("Completed")
             except gspread.exceptions.WorksheetNotFound:
@@ -347,7 +350,7 @@ if st.button("💾 Save Completed Stores"):
 
             st.success("✅ Completed stores saved!")
 
-        # --- Refresh df_sheet after any change ---
+        # --- Refresh df_sheet and agenda after any change ---
         df_sheet = get_as_dataframe(sheet).dropna(how="all")
         df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
         df_sheet["Visit Date"] = pd.to_datetime(df_sheet["Visit Date"], errors="coerce")
