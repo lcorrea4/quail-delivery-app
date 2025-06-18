@@ -346,21 +346,18 @@ with st.expander("Agenda Data", expanded = False):
 
 
 
+# Helper to calculate bucket
 def get_bucket_date(visit_date):
     if pd.isna(visit_date):
         return None
     visit_date = pd.to_datetime(visit_date)
     day = visit_date.day
-    
-    # Find the previous multiple of 5 for the day (bucket date)
     bucket_day = (day // 5) * 5
     if bucket_day == 0:
-        bucket_day = 5  # For days 1-4, bucket to day 5
-    
+        bucket_day = 5
     try:
         return visit_date.replace(day=bucket_day)
     except ValueError:
-        # If bucket_day exceeds month's max day (like June 30 etc), clamp it
         next_month = (visit_date + pd.DateOffset(months=1)).replace(day=1)
         last_day = (next_month - pd.Timedelta(days=1)).day
         return visit_date.replace(day=last_day)
