@@ -290,33 +290,52 @@ with st.expander("Agenda Data", expanded = False):
 
 completed_input = st.text_input("✅ Enter completed store numbers (comma-separated):")
 
+defer_toggle = st.checkbox("🔁 Defer store(s) to next 5-day bucket?")
+
 if st.button("💾 Save Completed Stores"):
     new_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
     try:
-        # Access or create "Completed" sheet
-        try:
-            completed_sheet = spreadsheet.worksheet("Completed")
-        except gspread.exceptions.WorksheetNotFound:
-            completed_sheet = spreadsheet.add_worksheet(title="Completed", rows="100", cols="1")
-        
-        # Load existing completed IDs from sheet
-        existing_df = get_as_dataframe(completed_sheet).dropna(how="all")
-        existing_ids = set()
-        if not existing_df.empty and "store_id" in existing_df.columns:
-            existing_ids = set(existing_df["store_id"].astype(str).str.strip())
-        
-        # Combine existing and new IDs, avoiding duplicates
-        combined_ids = sorted(existing_ids.union(new_ids))
-        
-        # Save combined list back to sheet
-        completed_sheet.clear()
-        combined_df = pd.DataFrame({"store_id": combined_ids})
-        set_with_dataframe(completed_sheet, combined_df)
+        if defer_toggle:
+            # Defer stores to next 5-day bucket
+            df_sheet["Name_abbr"] = df_sheet["Name"].apply(abbreviate_store_name)
 
-                                                           
-        st.success("✅ Completed stores saved!")
+            for store_id in new_ids:
+                store_id_abbr = abbreviate_completed_id(store_id)
+                match_idx = df_sheet[df_sheet["Name_abbr"] == store_id_abbr].index
+
+                if not match_idx.empty:
+                    current_date = df_sheet.loc[match_idx[0], "Visit Date"]
+                    if pd.notna(current_date):
+                        new_date = current_date + timedelta(days=5)
+                        df_sheet.loc[match_idx[0], "Visit Date"] = new_date
+                        df_sheet.loc[match_idx[0], "bucket_date"] = get_bucket_date(new_date)
+
+            # Overwrite the Google Sheet with the updated delivery plan
+            sheet.clear()
+            set_with_dataframe(sheet, df_sheet.drop(columns=["Name_abbr"]))
+
+            st.success("✅ Store(s) deferred to next 5-day bucket.")
+        else:
+            # Save as completed
+            try:
+                completed_sheet = spreadsheet.worksheet("Completed")
+            except gspread.exceptions.WorksheetNotFound:
+                completed_sheet = spreadsheet.add_worksheet(title="Completed", rows="100", cols="1")
+            
+            existing_df = get_as_dataframe(completed_sheet).dropna(how="all")
+            existing_ids = set()
+            if not existing_df.empty and "store_id" in existing_df.columns:
+                existing_ids = set(existing_df["store_id"].astype(str).str.strip())
+            
+            combined_ids = sorted(existing_ids.union(new_ids))
+            completed_sheet.clear()
+            combined_df = pd.DataFrame({"store_id": combined_ids})
+            set_with_dataframe(completed_sheet, combined_df)
+
+            st.success("✅ Completed stores saved!")
     except Exception as e:
-        st.error(f"❌ Failed to save completed stores: {e}")
+        st.error(f"❌ Failed to save: {e}")
+
 
 
 # --- Load completed stores from "Completed" sheet ---
