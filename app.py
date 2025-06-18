@@ -407,13 +407,14 @@ except Exception:
 def abbreviate_completed_id(store_id):
     store_id = store_id.strip().lower()
     if store_id.startswith("publix"):
-        return "P " + store_id.replace("publix", "").strip().title()
+        return "P" + store_id.replace("publix", "").strip().title().replace(" ", "")
     elif store_id.startswith("sedano") or store_id.startswith("sedano's"):
-        return "S " + store_id.replace("sedano's", "").replace("sedanos", "").strip().title()
+        return "S" + store_id.replace("sedano's", "").replace("sedanos", "").strip().title().replace(" ", "")
     elif store_id.startswith("fresco"):
-        return "F " + store_id.replace("fresco y mas", "").strip().title()
+        return "F" + store_id.replace("fresco y mas", "").strip().title().replace(" ", "")
     else:
-        return store_id.title()
+        return store_id.title().replace(" ", "")
+
 
 # Normalize all completed IDs
 completed_ids = [abbreviate_completed_id(x) for x in completed_ids]
@@ -454,13 +455,14 @@ def abbreviate_store_name(name):
         return name
     name = name.strip().lower()
     if "publix" in name:
-        return "P " + name.replace("publix", "").strip().title()
+        return "P" + name.replace("publix", "").strip().title().replace(" ", "")
     elif "sedano" in name:
-        return "S " + name.replace("sedano's", "").replace("sedanos", "").strip().title()
+        return "S" + name.replace("sedano's", "").replace("sedanos", "").strip().title().replace(" ", "")
     elif "fresco" in name:
-        return "F " + name.replace("fresco y mas", "").strip().title()
+        return "F" + name.replace("fresco y mas", "").strip().title().replace(" ", "")
     else:
-        return name.title()
+        return name.title().replace(" ", "")
+
 
 def wrap_text_after_n_commas(text, limit=8):
     if pd.isna(text) or not isinstance(text, str):
