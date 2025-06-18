@@ -292,6 +292,10 @@ completed_input = st.text_input("✅ Enter completed store numbers (comma-separa
 
 defer_toggle = st.checkbox("🔁 Defer store(s) to next 5-day bucket?")
 
+if "bucket_date" not in df_sheet.columns or df_sheet["bucket_date"].isna().any():
+    df_sheet["Visit Date"] = pd.to_datetime(df_sheet["Visit Date"], errors="coerce")
+    df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
+
 if st.button("💾 Save Completed Stores"):
     new_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
     try:
