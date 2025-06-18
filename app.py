@@ -404,7 +404,7 @@ if st.button("💾 Save Completed Stores"):
                 push_df = get_as_dataframe(push_sheet).dropna(how="all")
                 push_ids = set()
                 if not push_df.empty and "store_id" in push_df.columns:
-                    push_ids = set(push_df["store_id"].astype(str).str.strip()
+                    push_ids = set(push_df["store_id"].astype(str).str.strip())
 
                 #Combine and Save Push-to-Next-Week Stores
                 combine_push_ids = sorted(push_ids.union(new_ids))
