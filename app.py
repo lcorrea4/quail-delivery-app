@@ -272,6 +272,13 @@ with st.expander("📤 Upload Excel File", expanded=False):
     
             # --- Merge and Upload ---
             df_hist = df_hist.merge(days_df, on="Name", how="left")
+
+            # Calculate Visit Date and bucket_date BEFORE saving to Google Sheet
+            df_hist["Date"] = pd.to_datetime(df_hist["Date"], errors="coerce")
+            df_hist["Visit Date"] = df_hist["Date"] + pd.to_timedelta(df_hist["depletion_days_estimate"], unit="D")
+            df_hist["bucket_date"] = df_hist["Visit Date"].apply(get_bucket_date)
+
+            
             sheet.clear()
             set_with_dataframe(sheet, df_hist)
     
