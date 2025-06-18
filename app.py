@@ -503,7 +503,7 @@ def cross_out_stores(cell_value, completed_ids):
     crossed_parts = []
     for name in parts:
         name = name.strip()
-        if any(name.endswith(store_id.strip()) for store_id in completed_ids):
+        if any(store_id.strip().lower() in name.lower() for store_id in completed_ids):
             crossed_parts.append(f"<span style='text-decoration: line-through; color: #999;'>❌ {name}</span>")
         else:
             crossed_parts.append(name)
