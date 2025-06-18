@@ -455,6 +455,48 @@ completed_ids = [abbreviate_completed_id(x) for x in completed_ids]
     
 df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
 
+# --- Apply Push Logic to Delay Certain Stores ---
+try:
+    push_sheet = spreadsheet.worksheet("PushNextWeek")
+    push_df = get_as_dataframe(push_sheet).dropna(how="all")
+
+    if not push_df.empty and "store_id" in push_df.columns:
+        push_ids = push_df["store_id"].astype(str).str.strip().tolist()
+        push_ids = [abbreviate_completed_id(x) for x in push_ids]
+
+        # Define delivery windows (e.g., 5th, 10th, ..., 30th)
+        delivery_days = [5, 10, 15, 20, 25, 30]
+
+        def get_next_bucket(current_date):
+            if pd.isna(current_date):
+                return current_date
+            current_day = current_date.day
+            for day in delivery_days:
+                if current_day < day:
+                    try:
+                        return current_date.replace(day=day)
+                    except ValueError:
+                        continue
+            # If beyond last bucket, clamp to 30 or end of month
+            try:
+                return current_date.replace(day=30)
+            except ValueError:
+                next_month = (current_date + pd.DateOffset(months=1)).replace(day=1)
+                last_day = (next_month - pd.Timedelta(days=1)).day
+                return current_date.replace(day=last_day)
+
+        # Abbreviated Name column for matching
+        df_sheet["Name_abbr"] = df_sheet["Name"].apply(lambda x: x.strip().upper() if isinstance(x, str) else "")
+        df_sheet["was_pushed"] = df_sheet["Name_abbr"].apply(lambda x: any(pid.upper() in x for pid in push_ids))
+
+        # Shift Visit Dates
+        df_sheet.loc[df_sheet["was_pushed"], "Visit Date"] = df_sheet.loc[df_sheet["was_pushed"], "Visit Date"].apply(get_next_bucket)
+        df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
+
+except Exception as e:
+    st.error(f"❌ Error processing pushed stores: {e}")
+
+
 # --- Filter future or current buckets only ---
 today = pd.Timestamp(datetime.today().date())
 today_day = today.day
