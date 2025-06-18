@@ -218,6 +218,12 @@ except Exception as e:
     st.error(f"Error loading completed stores: {e}")
     completed_set = set()
 
+# Open and read the file
+with open("store_list.txt", "r") as file:
+    raw_store_list = file.read()
+
+
+
 
 with st.expander("📤 Upload Excel File", expanded=False):
     uploaded_file = st.file_uploader("Upload your Excel File", type=["xlsx"])
@@ -238,160 +244,7 @@ with st.expander("📤 Upload Excel File", expanded=False):
                 "Type", "Date", "Num", "Memo", "Name",
                 "Qty", "Sales Price", "Amount", "Balance"
             ]
-    
-            # --- Manual Depletion Day Estimates ---
-            raw_store_list = """
-            - Fresco y Mas 1717 - 30
-            - Fresco y Mas 201 - 20
-            - Fresco y Mas 231 - 10
-            - Fresco y Mas 235 - 25
-            - Fresco y Mas 237 - 30
-            - Fresco y Mas 239 - 30
-            - Fresco y Mas 242 - 20
-            - Fresco y Mas 243 - 15
-            - Fresco y Mas 2450 - 40
-            - Fresco y Mas 252 - 20
-            - Fresco y Mas 270 - 15
-            - Fresco y Mas 286 - 25
-            - Fresco y Mas 287 - 20
-            - Fresco y Mas 292 - 10
-            - Fresco y Mas 304 - 60
-            - Fresco y Mas 353 - 20
-            - Fresco y Mas 359 - 20
-            - Fresco y Mas 361 - 20
-            - Fresco y Mas 366 - 15
-            - Fresco y Mas 384 - 20
-            - Fresco y Mas 385 - 15
-            - Fresco y Mas 387 - 15
-            - Fresco y Mas 388 - 20
-            - Fresco y Mas 697 - 50
-            - Fresco y Mas 745 - 60
-            - Fresco y mas 283 - 20
-            - Publix 10 - 15
-            - Publix 1009 - 20
-            - Publix 1017 - 20
-            - Publix 1036 - 40
-            - Publix 1062 - 25
-            - Publix 1072 - 15
-            - Publix 1094 - 30
-            - Publix 1097 - 20
-            - Publix 1124 - 40
-            - Publix 1129 - 15
-            - Publix 1151 - 15
-            - Publix 1209 - 30
-            - Publix 1230 - 25
-            - Publix 1236 - 15
-            - Publix 1264 - 10
-            - Publix 127 - 25
-            - Publix 1273 - 30
-            - Publix 1288 - 30
-            - Publix 1297 - 35
-            - Publix 1382 - 15
-            - Publix 1384 - 30
-            - Publix 1386 - 30
-            - Publix 1389 - 35
-            - Publix 1397 - 15
-            - Publix 1405 - 40
-            - Publix 1423 - 25
-            - Publix 1467 - 20
-            - Publix 1469 - 20
-            - Publix 1491 - 50
-            - Publix 1492 - 15
-            - Publix 1494 - 15
-            - Publix 1526 - 40
-            - Publix 1536 - 15
-            - Publix 1561 - 30
-            - Publix 1571 - 15
-            - Publix 1614 - 25
-            - Publix 1699 - 40
-            - Publix 1715 - 30
-            - Publix 1748 - 20
-            - Publix 1776 - 50
-            - Publix 1803 - 30
-            - Publix 1804 - 20
-            - Publix 21 - 30
-            - Publix 222 - 20
-            - Publix 223 - 30
-            - Publix 238 - 20
-            - Publix 24 - 10
-            - Publix 242 - 60
-            - Publix 246 - 40
-            - Publix 262 - 20
-            - Publix 293 - 15
-            - Publix 302 - 50
-            - Publix 31 - 15
-            - Publix 327 - 20
-            - Publix 343 - 15
-            - Publix 375 - 20
-            - Publix 402 - 15
-            - Publix 406 - 30
-            - Publix 421 - 25
-            - Publix 44 - 20
-            - Publix 454 - 20
-            - Publix 50 - 20
-            - Publix 509 - 40
-            - Publix 51 - 15
-            - Publix 510 - 25
-            - Publix 529 - 20
-            - Publix 54 - 20
-            - Publix 550 - 40
-            - Publix 56 - 40
-            - Publix 581 - 20
-            - Publix 583 - 20
-            - Publix 586 - 20
-            - Publix 588 - 30
-            - Publix 600 - 30
-            - Publix 621 - 30
-            - Publix 655 - 25
-            - Publix 657 - 40
-            - Publix 658 - 20
-            - Publix 669 - 20
-            - Publix 674 - 30
-            - Publix 70 - 25
-            - Publix 714 - 20
-            - Publix 715 - 40
-            - Publix 747 - 30
-            - Publix 750 - 50
-            - Publix 759 - 30
-            - Publix 794 - 30
-            - Publix 832 - 15
-            - Publix 835 - 30
-            - Publix 84 - 30
-            - Publix 848 - 50
-            - Publix 861 - 50
-            - Publix 889 - 25
-            - Sedano's 04 - 20
-            - Sedano's 05 - 30
-            - Sedano's 08 - 20
-            - Sedano's 09 - 25
-            - Sedano's 10 - 25
-            - Sedano's 11 - 15
-            - Sedano's 14 - 20
-            - Sedano's 16 - 30
-            - Sedano's 17 - 20
-            - Sedano's 18 - 30
-            - Sedano's 20 - 25
-            - Sedano's 21 - 30
-            - Sedano's 22 - 30
-            - Sedano's 23 - 25
-            - Sedano's 24 - 25
-            - Sedano's 26 - 25
-            - Sedano's 27 - 50
-            - Sedano's 28 - 20
-            - Sedano's 29 - 40
-            - Sedano's 31 - 30
-            - Sedano's 32 - 40
-            - Sedano's 33 - 20
-            - Sedano's 34 - 40
-            - Sedano's 36 - 25
-            - Sedano's 37 - 40
-            - Sedano's 38 - 15
-            - Sedano's 41 - 40
-            - Sedano's 42 - 25
-            - Sedano's 43 - 30
-            - Sedano's 7 - 30
-            - sedanos 1 - 40
-            """
+
     
             store_days = []
             for line in raw_store_list.strip().splitlines():
@@ -462,34 +315,6 @@ if st.button("💾 Save Completed Stores"):
         combined_df = pd.DataFrame({"store_id": combined_ids})
         set_with_dataframe(completed_sheet, combined_df)
 
-        if push_to_next_week:
-            try:
-                # Access or create "PushNextWeek" sheet
-                try:
-                    push_sheet = spreadsheet.worksheet("PushNextWeek")
-                except gspread.exceptions.WorksheetNotFound:
-                    push_sheet = spreadsheet.add_worksheet(title="PushNextWeek", rows="100", cols="1")
-        
-                # Try to get push_ids safely
-                try:
-                    push_df = get_as_dataframe(push_sheet).dropna(how="all")
-                    if not push_df.empty and "store_id" in push_df.columns:
-                        push_ids = set(push_df["store_id"].astype(str).str.strip())
-                    else:
-                        push_ids = set()
-                except:
-                    push_ids = set()
-        
-                # Combine and deduplicate
-                combined_push_ids = sorted(push_ids.union(set(new_ids)))
-        
-                # Save back to sheet
-                push_sheet.clear()
-                set_with_dataframe(push_sheet, pd.DataFrame({"store_id": combined_push_ids}))
-                st.success("⏭️ Pushed stores saved to next week!")
-            except Exception as e:
-                st.error(f"❌ Failed to save pushed stores: {e}")
-
                                                            
         st.success("✅ Completed stores saved!")
     except Exception as e:
@@ -538,10 +363,6 @@ for bucket_date, group in df_sheet.groupby("bucket_date"):
     agenda_data.append(row)
 
 agenda_df = pd.DataFrame(agenda_data)
-
-
-
-
 
 
 
