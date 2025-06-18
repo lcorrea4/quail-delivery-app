@@ -220,26 +220,29 @@ def abbreviate_completed_id(store_id):
     else:
         return store_id.title().replace(" ", "")
 
-# Helper to calculate bucket
+
 def get_bucket_date(visit_date):
     if pd.isna(visit_date):
-        return None
-    visit_date = pd.to_datetime(visit_date)
-
-    # Force bucket days to fixed multiples of 5: 5, 10, 15, 20, 25, 30
+        return pd.NaT
+    
     day = visit_date.day
-    bucket_day = (day // 5) * 5
-    if bucket_day == 0:
-        bucket_day = 5
+    month = visit_date.month
+    year = visit_date.year
+    
+    # Bucket start days fixed for each month
+    bucket_starts = [15, 20, 25]
+    last_day = pd.Period(visit_date, freq='M').days_in_month
+    bucket_starts.append(last_day)
+    
+    # Find the largest bucket start <= visit_date.day
+    bucket_day_candidates = [d for d in bucket_starts if d <= day]
+    if bucket_day_candidates:
+        bucket_day = max(bucket_day_candidates)
+    else:
+        bucket_day = bucket_starts[0]  # fallback to earliest bucket, e.g., 15
 
-    # Now replace day, but be careful of overflow (e.g., Feb 30)
-    try:
-        return visit_date.replace(day=bucket_day)
-    except ValueError:
-        # Adjust if bucket_day > last day of month
-        next_month = (visit_date + pd.DateOffset(months=1)).replace(day=1)
-        last_day = (next_month - pd.Timedelta(days=1)).day
-        return visit_date.replace(day=last_day)
+    
+    return visit_date.replace(day=bucket_day)
 
 
 
