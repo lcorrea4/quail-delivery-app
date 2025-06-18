@@ -328,16 +328,11 @@ if "bucket_date" not in df_sheet.columns or df_sheet["bucket_date"].isna().any()
 if st.button("💾 Save Completed Stores"):
     new_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
     try:
-        # Make sure required columns exist
-        if "Visit Date" not in df_sheet.columns:
-            st.error("❌ 'Visit Date' column is missing in the sheet.")
-            st.stop()
+        # Make sure Visit Date and Bucket Date exist
+        df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
+        df_sheet["Visit Date"] = df_sheet["Date"] + pd.to_timedelta(df_sheet["depletion_days_estimate"], unit="D")
+        df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
 
-        if "bucket_date" not in df_sheet.columns or df_sheet["bucket_date"].isna().any():
-            df_sheet["Visit Date"] = pd.to_datetime(df_sheet["Visit Date"], errors="coerce")
-            df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
-
-        # Get current 5-day bucket date
         today = pd.Timestamp(datetime.today().date())
         current_bucket_date = get_bucket_date(today)
 
@@ -351,7 +346,6 @@ if st.button("💾 Save Completed Stores"):
                 ].index
 
                 if not match_idx.empty:
-                    # Defer Visit Date by 5 days
                     current_visit = df_sheet.loc[match_idx[0], "Visit Date"]
                     if pd.notna(current_visit):
                         new_visit = current_visit + timedelta(days=5)
@@ -369,9 +363,8 @@ if st.button("💾 Save Completed Stores"):
                 sheet.clear()
                 set_with_dataframe(sheet, df_sheet)
                 st.success("✅ Store(s) deferred to next 5-day bucket.")
-
         else:
-            # Save completed stores
+            # Save completed store IDs
             try:
                 completed_sheet = spreadsheet.worksheet("Completed")
             except gspread.exceptions.WorksheetNotFound:
@@ -389,10 +382,10 @@ if st.button("💾 Save Completed Stores"):
 
             st.success("✅ Completed stores saved!")
 
-        # --- Refresh df_sheet after any change ---
+        # Refresh df_sheet after save
         df_sheet = get_as_dataframe(sheet).dropna(how="all")
         df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
-        df_sheet["Visit Date"] = pd.to_datetime(df_sheet["Visit Date"], errors="coerce")
+        df_sheet["Visit Date"] = df_sheet["Date"] + pd.to_timedelta(df_sheet["depletion_days_estimate"], unit="D")
         df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
         df_sheet["store_group"] = df_sheet["Name"].apply(normalize_store)
         df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
