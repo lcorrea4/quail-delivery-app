@@ -564,7 +564,10 @@ if st.button("💾 Save Completed Stores"):
 
 df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
 
+today = pd.Timestamp(datetime.today().date())
+today_bucket_date = get_bucket_date(today)
 df_sheet = df_sheet[df_sheet["bucket_date"] >= today_bucket_date]
+
 
 df_sheet["store_group"] = df_sheet["Name"].apply(normalize_store)
 
