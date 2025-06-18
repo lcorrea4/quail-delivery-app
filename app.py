@@ -368,6 +368,29 @@ completed_input = st.text_input("✅ Enter completed store numbers (comma-separa
 
 push_to_next_week = st.toggle("⏭️ Push these stores to next week")
 
+def build_and_display_agenda(df_sheet, completed_ids):
+    agenda_data = []
+    for bucket_date, group in df_sheet.groupby("bucket_date"):
+        row = {
+            "5-day-bucket-date": bucket_date.strftime("%-m/%-d"),
+            "Publix": ", ".join(group[group["store_group"] == "Publix"]["Name"].unique()),
+            "Sedanos": ", ".join(group[group["store_group"] == "Sedanos"]["Name"].unique()),
+            "Fresco y Mas": ", ".join(group[group["store_group"] == "Fresco y Mas"]["Name"].unique()),
+        }
+        agenda_data.append(row)
+
+    agenda_df = pd.DataFrame(agenda_data)
+
+    for col in ["Publix", "Sedanos", "Fresco y Mas"]:
+        if col in agenda_df.columns:
+            agenda_df[col] = agenda_df[col].apply(lambda x: cross_out_stores(x, completed_ids))
+            agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
+
+    agenda_html = agenda_df.to_html(escape=False, index=False)
+    st.markdown("### 📅 5-Day Delivery Agenda")
+    st.markdown(agenda_html, unsafe_allow_html=True)
+
+
 if st.button("💾 Save Completed Stores"):
     new_ids = [x.strip() for x in completed_input.split(",") if x.strip()]
     try:
@@ -454,6 +477,11 @@ if st.button("💾 Save Completed Stores"):
                 st.error(f"❌ Failed to save pushed stores: {e}")
 
         st.success("✅ Completed stores saved!")
+        # 🔄 Reload updated completed_ids from Google Sheet
+        completed_ids = [abbreviate_completed_id(x) for x in combined_ids]
+
+        build_and_display_agenda(df_sheet, completed_ids)
+
     except Exception as e:
         st.error(f"❌ Failed to save completed stores: {e}")
 
@@ -587,18 +615,6 @@ def apply_unicode_strikethrough(text):
 df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
 
 
-# --- Build 5-day agenda DataFrame ---
-agenda_data = []
-for bucket_date, group in df_sheet.groupby("bucket_date"):
-    row = {
-        "5-day-bucket-date": bucket_date.strftime("%-m/%-d"),  # e.g. 6/15
-        "Publix": ", ".join(group[group["store_group"] == "Publix"]["Name"].unique()),
-        "Sedanos": ", ".join(group[group["store_group"] == "Sedanos"]["Name"].unique()),
-        "Fresco y Mas": ", ".join(group[group["store_group"] == "Fresco y Mas"]["Name"].unique()),
-    }
-    agenda_data.append(row)
-
-agenda_df = pd.DataFrame(agenda_data)
 
 
 
