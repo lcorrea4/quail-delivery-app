@@ -21,15 +21,22 @@ df["Visit Date"] = pd.to_datetime(df["Visit Date"])
 def get_bucket_date(visit_date):
     if pd.isna(visit_date):
         return pd.NaT
+    
     day = visit_date.day
-    bucket_start_day = ((day - 1) // 5) * 5 + 1
-    try:
-        return visit_date.replace(day=bucket_start_day)
-    except ValueError:
-        # Handle invalid day (e.g., Feb 30)
-        next_month = (visit_date + pd.DateOffset(months=1)).replace(day=1)
-        last_day = (next_month - pd.Timedelta(days=1)).day
-        return visit_date.replace(day=last_day)
+    month = visit_date.month
+    year = visit_date.year
+    
+    # Define bucket start days in the month
+    bucket_starts = [15, 20, 25]
+    # Get last day of month
+    last_day = pd.Period(visit_date, freq='M').days_in_month
+    bucket_starts.append(last_day)
+    
+    # Find the bucket start that is <= visit_date.day (closest on or before day)
+    bucket_day = max([d for d in bucket_starts if d <= day])
+    
+    return visit_date.replace(day=bucket_day)
+
 
 # Add bucket_date column
 df["bucket_date"] = df["Visit Date"].apply(get_bucket_date)
