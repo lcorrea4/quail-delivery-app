@@ -227,13 +227,16 @@ else:
     )
 
 if stores_to_move:
-    # Week selector (using actual bucket dates)
     target_bucket = st.selectbox(
         "Move to which delivery week?",
-        options=future_buckets[1:],  # Skip current week
-        format_func=lambda d: d.strftime("%b %d-%d"),  # e.g. "Jun 20-24"
+        options=future_buckets,  # Now includes 6/20
+        format_func=lambda d: f"{d.strftime('%b %d')} (Week {d.isocalendar()[1]})",
         key="target_bucket_select"
     )
+    
+    # Visual confirmation
+    current_bucket = df_sheet[df_sheet["Name2"]==stores_to_move[0]]["bucket_date"].iloc[0]
+    st.write(f"Moving from {current_bucket.strftime('%b %d')} → {target_bucket.strftime('%b %d')}")
     
     if st.button("🔀 Reschedule Stores", key="move_stores_button"):
         moved_stores = []
