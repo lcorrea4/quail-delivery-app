@@ -178,7 +178,7 @@ with st.expander("📄 View Current Google Sheet Data", expanded=False):
 # --- Compute Visit Date ---
 df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
 df_sheet["Visit Date"] = df_sheet["Date"] + pd.to_timedelta(df_sheet["depletion_days_estimate"], unit="D")
-df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
+df_sheet["NameAbbreviated"] = df_sheet["Name"].apply(abbreviate_store_name)
 
 with st.expander("Agenda Data", expanded = False):
     st.dataframe(df_sheet, use_container_width=True)
@@ -199,11 +199,11 @@ if st.button("⏩ Move Stores"):
         
         for store in stores_to_move:
             # Find the store in the dataframe (case-sensitive exact match)
-            store_mask = df_to_update["Name"].str.strip() == store.strip()
+            store_mask = df_to_update["NameAbbreviated"].str.strip() == store.strip()
             
             if not store_mask.any():
                 # Try case-insensitive match if exact match fails
-                store_mask = df_to_update["Name"].str.strip().str.upper() == store.strip().upper()
+                store_mask = df_to_update["NameAbbreviated"].str.strip().str.upper() == store.strip().upper()
             
             if store_mask.any():
                 # Add 5 days to the depletion estimate (which will move it to next bucket)
