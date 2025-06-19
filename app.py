@@ -187,9 +187,6 @@ with st.expander("Agenda Data", expanded = False):
 st.subheader("🔄 Move Stores to Next 5-Day Bucket")
 move_input = st.text_input("Enter store numbers to move to next bucket (comma-separated, e.g., S11, P5):")
 
-# --- New Feature: Move Stores to Next Bucket ---
-st.subheader("🔄 Move Stores to Next 5-Day Bucket")
-move_input = st.text_input("Enter store numbers to move to next bucket (comma-separated, e.g., S11, P5):")
 
 if st.button("⏩ Move Stores"):
     if not move_input.strip():
