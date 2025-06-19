@@ -180,12 +180,6 @@ df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
 df_sheet["Visit Date"] = df_sheet["Date"] + pd.to_timedelta(df_sheet["depletion_days_estimate"], unit="D")
 df_sheet["Name2"] = df_sheet["Name"].apply(abbreviate_store_name)
 
-# Add these near your other state variables (top of script)
-if 'moved_stores_history' not in st.session_state:
-    st.session_state.moved_stores_history = []
-if 'completed_stores_history' not in st.session_state:
-    st.session_state.completed_stores_history = []
-
 
 with st.expander("Agenda Data", expanded = False):
     st.dataframe(df_sheet, use_container_width=True)
