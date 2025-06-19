@@ -182,6 +182,41 @@ df_sheet["Visit Date"] = df_sheet["Date"] + pd.to_timedelta(df_sheet["depletion_
 with st.expander("Agenda Data", expanded = False):
     st.dataframe(df_sheet, use_container_width=True)
 
+# --- New Feature: Move Stores to Next Bucket ---
+st.subheader("🔄 Move Stores to Next 5-Day Bucket")
+move_input = st.text_input("Enter store numbers to move to next bucket (comma-separated):")
+
+if st.button("⏩ Move Stores"):
+    if not move_input.strip():
+        st.warning("Please enter at least one store number")
+    else:
+        stores_to_move = [x.strip() for x in move_input.split(",") if x.strip()]
+        moved_stores = []
+        
+        # Make a copy of the dataframe to modify
+        df_to_update = df_sheet.copy()
+        
+        for store in stores_to_move:
+            # Find the store in the dataframe
+            store_mask = df_to_update["Name"].str.strip().str.lower() == store.strip().lower()
+            if store_mask.any():
+                # Add 5 days to the depletion estimate (which will move it to next bucket)
+                df_to_update.loc[store_mask, "depletion_days_estimate"] += 5
+                moved_stores.append(store)
+            else:
+                st.warning(f"Store '{store}' not found in current data")
+        
+        if moved_stores:
+            # Update the Google Sheet with the modified data
+            try:
+                sheet.clear()
+                set_with_dataframe(sheet, df_to_update)
+                st.success(f"✅ Successfully moved stores: {', '.join(moved_stores)}")
+                st.experimental_rerun()  # Refresh the display
+            except Exception as e:
+                st.error(f"❌ Failed to update Google Sheet: {e}")
+
+# --- Existing Completed Stores Section ---
 completed_input = st.text_input("✅ Enter completed store numbers (comma-separated):")
 
 if st.button("💾 Save Completed Stores"):
@@ -264,35 +299,12 @@ st.markdown("### 📅 5-Day Delivery Agenda")
 st.markdown(agenda_html, unsafe_allow_html=True)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # import streamlit as st
 # import pandas as pd
 # from datetime import datetime, timedelta
 # import gspread
 # from oauth2client.service_account import ServiceAccountCredentials
 # from gspread_dataframe import get_as_dataframe, set_with_dataframe
-# import json
-# from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
 # import calendar
 
 # # --- Normalize store names for grouping ---
@@ -370,7 +382,6 @@ st.markdown(agenda_html, unsafe_allow_html=True)
 #     else:
 #         return name.title().replace(" ", "")
 
-
 # def wrap_text_after_n_commas(text, limit=8):
 #     if pd.isna(text) or not isinstance(text, str):
 #         return text
@@ -379,95 +390,6 @@ st.markdown(agenda_html, unsafe_allow_html=True)
 #     for i in range(0, len(items), limit):
 #         wrapped.append(", ".join(items[i:i+limit]))
 #     return "<br>".join(wrapped)
-
-# def apply_unicode_strikethrough(text):
-#     return ''.join(char + '\u0336' for char in text)
-
-# def draw_calendar(delivery_df):
-#     st.subheader("🗓️ Delivery Calendar")
-
-#     # Make sure Date is datetime
-#     delivery_df["Date"] = pd.to_datetime(delivery_df["Date"], errors="coerce")
-
-#     # User selects month and year
-#     today = date.today()
-#     selected_year = st.selectbox("Select Year", sorted(delivery_df["Date"].dt.year.dropna().unique()), index=0)
-#     selected_month = st.selectbox("Select Month", list(calendar.month_name)[1:], index=today.month - 1)
-
-#     month_number = list(calendar.month_name).index(selected_month)
-#     filtered_df = delivery_df[
-#         (delivery_df["Date"].dt.year == selected_year) &
-#         (delivery_df["Date"].dt.month == month_number)
-#     ]
-
-#     # Build day-to-store map
-#     day_to_stores = filtered_df.groupby(delivery_df["Date"].dt.day)["Name"].apply(list).to_dict()
-
-#     # Draw the calendar
-#     st.markdown(f"### {selected_month} {selected_year}")
-#     cal = calendar.monthcalendar(selected_year, month_number)
-
-#     for week in cal:
-#         cols = st.columns(7)
-#         for i, day in enumerate(week):
-#             if day == 0:
-#                 cols[i].empty()
-#             else:
-#                 label = f"{day}"
-#                 if day in day_to_stores:
-#                     stores = "\n".join(day_to_stores[day])
-#                     cols[i].markdown(f"**{label}** 🟢")
-#                     with cols[i].expander("Details"):
-#                         for store in day_to_stores[day]:
-#                             st.write(f"- {store}")
-#                 else:
-#                     cols[i].markdown(f"{label}")
-                    
-
-# # --- Function to Calculate Dates ---
-# def calculate_delivery_dates(df):
-#     df['last_delivery_date'] = pd.to_datetime(df['last_delivery_date'], errors='coerce')
-#     df['expected_empty_date'] = df['last_delivery_date'] + pd.to_timedelta(df['depletion_days_estimate'], unit='D')
-#     df['days_until_empty'] = (df['expected_empty_date'] - datetime.today()).dt.days
-#     return df
-
-# # Define custom 5-day bucket function
-# def get_5day_bucket(date):
-#     # Calculate the starting day for the bucket (in groups of 5)
-#     start_day = ((date.day - 1) // 5) * 5 + 1
-#     # Calculate the last day of the bucket ensuring we don't exceed the month's days
-#     end_day = min(start_day + 4, pd.Period(date, freq='M').days_in_month)
-#     start_date = date.replace(day=start_day)
-#     end_date = date.replace(day=end_day)
-#     label = f"{start_date.strftime('%b %d')}–{end_date.strftime('%d')}"
-#     return f"{label} ({date.strftime('%Y')})"
-
-# def get_5day_bucket2(date_val):
-#     """
-#     Takes a datetime and returns a tuple (bucket_start_date, bucket_label)
-#     bucket_start_date = datetime.date used for sorting
-#     bucket_label = string like 'Jun 15 – Jun 19'
-#     """
-#     if pd.isnull(date_val):
-#         return (None, "Unknown")
-
-#     # Force date only
-#     date_val = pd.to_datetime(date_val).date()
-
-#     # Start buckets from June 15, 2025 (adjust if you want dynamic start)
-#     start = date.today()  # Use today's date as rolling start
-#     days_since_start = (date_val - start).days
-#     if days_since_start < 0:
-#         # If date is before today, just assign to today's bucket
-#         bucket_start = start
-#     else:
-#         bucket_start = start + timedelta(days=(days_since_start // 5) * 5)
-
-#     bucket_end = bucket_start + timedelta(days=4)
-#     bucket_label = f"{bucket_start.strftime('%b %d')} – {bucket_end.strftime('%b %d')}"
-
-#     return (bucket_start, bucket_label)
-
 
 # # --- Google Sheet Setup ---
 # # Define scope and authenticate
@@ -484,11 +406,8 @@ st.markdown(agenda_html, unsafe_allow_html=True)
 # except gspread.exceptions.WorksheetNotFound:
 #     sheet_completed = spreadsheet.add_worksheet(title="Completed", rows="100", cols="20")
 
-
 # st.set_page_config(layout="wide")
-
 # st.title("🥚 Quail Egg Delivery Manager")
-
 
 # # Load completed store numbers
 # try:
@@ -508,9 +427,6 @@ st.markdown(agenda_html, unsafe_allow_html=True)
 # # Open and read the file
 # with open("store_list.txt", "r") as file:
 #     raw_store_list = file.read()
-
-
-
 
 # with st.expander("📤 Upload Excel File", expanded=False):
 #     uploaded_file = st.file_uploader("Upload your Excel File", type=["xlsx"])
@@ -532,7 +448,6 @@ st.markdown(agenda_html, unsafe_allow_html=True)
 #                 "Qty", "Sales Price", "Amount", "Balance"
 #             ]
 
-    
 #             store_days = []
 #             for line in raw_store_list.strip().splitlines():
 #                 cleaned = line.lstrip("- ").strip()
@@ -561,19 +476,12 @@ st.markdown(agenda_html, unsafe_allow_html=True)
 #     except Exception as e:
 #         st.error(f"❌ Error loading Google Sheet: {e}")
 
-
-
-
-# # --- Visit Date & 5-Day Bucket Agenda ---
-
 # # --- Compute Visit Date ---
 # df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
 # df_sheet["Visit Date"] = df_sheet["Date"] + pd.to_timedelta(df_sheet["depletion_days_estimate"], unit="D")
 
 # with st.expander("Agenda Data", expanded = False):
 #     st.dataframe(df_sheet, use_container_width=True)
-
-
 
 # completed_input = st.text_input("✅ Enter completed store numbers (comma-separated):")
 
@@ -599,12 +507,10 @@ st.markdown(agenda_html, unsafe_allow_html=True)
 #         completed_sheet.clear()
 #         combined_df = pd.DataFrame({"store_id": combined_ids})
 #         set_with_dataframe(completed_sheet, combined_df)
-
                                                            
 #         st.success("✅ Completed stores saved!")
 #     except Exception as e:
 #         st.error(f"❌ Failed to save completed stores: {e}")
-
 
 # # --- Load completed stores from "Completed" sheet ---
 # try:
@@ -614,10 +520,8 @@ st.markdown(agenda_html, unsafe_allow_html=True)
 # except Exception:
 #     completed_ids = []
 
-
 # # Normalize all completed IDs
 # completed_ids = [abbreviate_completed_id(x) for x in completed_ids]
-
     
 # df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
 
@@ -632,9 +536,7 @@ st.markdown(agenda_html, unsafe_allow_html=True)
 # df_sheet = df_sheet[df_sheet["bucket_date"] >= today_bucket_date]
 
 # df_sheet["store_group"] = df_sheet["Name"].apply(normalize_store)
-
 # df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
-
 
 # # --- Build 5-day agenda DataFrame ---
 # agenda_data = []
@@ -649,16 +551,11 @@ st.markdown(agenda_html, unsafe_allow_html=True)
 
 # agenda_df = pd.DataFrame(agenda_data)
 
-
-
-
 # # --- Apply wrapping and crossing out ---
 # for col in ["Publix", "Sedanos", "Fresco y Mas"]:
 #     if col in agenda_df.columns:
 #         agenda_df[col] = agenda_df[col].apply(lambda x: cross_out_stores(x, completed_ids))
 #         agenda_df[col] = agenda_df[col].apply(lambda x: wrap_text_after_n_commas(x, limit=8))
-
-
 
 # # Convert DataFrame to HTML
 # agenda_html = agenda_df.to_html(escape=False, index=False)
@@ -666,3 +563,5 @@ st.markdown(agenda_html, unsafe_allow_html=True)
 # # Display as HTML in Streamlit
 # st.markdown("### 📅 5-Day Delivery Agenda")
 # st.markdown(agenda_html, unsafe_allow_html=True)
+
+
