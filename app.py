@@ -184,7 +184,7 @@ with st.expander("Agenda Data", expanded = False):
 
 # --- New Feature: Move Stores to Next Bucket ---
 st.subheader("🔄 Move Stores to Next 5-Day Bucket")
-move_input = st.text_input("Enter store numbers to move to next bucket (comma-separated):")
+move_input = st.text_input("Enter store numbers to move to next bucket (comma-separated, e.g., S11, P5):")
 
 if st.button("⏩ Move Stores"):
     if not move_input.strip():
@@ -197,14 +197,19 @@ if st.button("⏩ Move Stores"):
         df_to_update = df_sheet.copy()
         
         for store in stores_to_move:
-            # Find the store in the dataframe
-            store_mask = df_to_update["Name"].str.strip().str.lower() == store.strip().lower()
+            # Find the store in the dataframe (case-sensitive exact match)
+            store_mask = df_to_update["Name"].str.strip() == store.strip()
+            
+            if not store_mask.any():
+                # Try case-insensitive match if exact match fails
+                store_mask = df_to_update["Name"].str.strip().str.upper() == store.strip().upper()
+            
             if store_mask.any():
                 # Add 5 days to the depletion estimate (which will move it to next bucket)
                 df_to_update.loc[store_mask, "depletion_days_estimate"] += 5
                 moved_stores.append(store)
             else:
-                st.warning(f"Store '{store}' not found in current data")
+                st.warning(f"Store '{store}' not found in current data. Make sure to use the abbreviated format (e.g., S11, P5)")
         
         if moved_stores:
             # Update the Google Sheet with the modified data
