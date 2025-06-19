@@ -201,6 +201,7 @@ if 'completed_stores_history' not in st.session_state:
 st.subheader("🔄 Reschedule Stores")
 
 # Get unique upcoming bucket dates (grouped by week)
+df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
 bucket_dates = sorted(df_sheet["bucket_date"].dropna().unique())
 future_buckets = [d for d in bucket_dates if d >= pd.Timestamp(datetime.today().date())]
 
