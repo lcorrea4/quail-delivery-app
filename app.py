@@ -283,14 +283,19 @@ if stores_to_move:
                 st.error(f"❌ Failed to update Google Sheet: {e}")
                 st.error("Please try again or check your connection.")
 
-# --- Undo Section (Updated for Week Moves) ---
+# --- Undo Section (Updated with Unique Keys) ---
 if st.session_state.get('moved_stores_history'):
-    st.subheader("↩️ Undo Last Move")
+    st.subheader("↩️ Undo Actions")
+    
+    # Create unique keys based on timestamp
     last_move = st.session_state.moved_stores_history[-1]
+    undo_key = f"undo_move_{last_move[0]['timestamp'].timestamp()}"
     
-    st.write(f"Last moved {len(last_move)} stores to {pd.to_datetime(last_move[0]['timestamp']).strftime('%b %d')}")
-    
-    if st.button("Undo Last Move", key="undo_move_button"):
+    if st.button(
+        "Undo Last Move",
+        disabled=not st.session_state.moved_stores_history,
+        key=undo_key  # Unique key based on timestamp
+    ):
         df_to_update = df_sheet.copy()
         
         for move in last_move:
