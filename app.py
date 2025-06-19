@@ -311,6 +311,7 @@ if st.session_state.get('moved_stores_history'):
         except Exception as e:
             st.error(f"❌ Failed to undo move: {e}")
 
+st.subheader("✅ Store Delivery")
 
 # --- Updated Completed Stores Section ---
 completed_input = st.text_input(
