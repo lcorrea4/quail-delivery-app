@@ -178,6 +178,7 @@ with st.expander("📄 View Current Google Sheet Data", expanded=False):
 # --- Compute Visit Date ---
 df_sheet["Date"] = pd.to_datetime(df_sheet["Date"], errors="coerce")
 df_sheet["Visit Date"] = df_sheet["Date"] + pd.to_timedelta(df_sheet["depletion_days_estimate"], unit="D")
+df_sheet["Name"] = df_sheet["Name"].apply(abbreviate_store_name)
 
 with st.expander("Agenda Data", expanded = False):
     st.dataframe(df_sheet, use_container_width=True)
