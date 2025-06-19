@@ -236,7 +236,7 @@ if stores_to_move:
     
     # Visual confirmation
     current_bucket = df_sheet[df_sheet["Name2"]==stores_to_move[0]]["bucket_date"].iloc[0]
-    st.write(f"Moving from {current_bucket.strftime('%b %d')} → {target_bucket.strftime('%b %d')}")
+    # st.write(f"Moving from {current_bucket.strftime('%b %d')} → {target_bucket.strftime('%b %d')}")
     
     if st.button("🔀 Reschedule Stores", key="move_stores_button"):
         moved_stores = []
