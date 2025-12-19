@@ -203,7 +203,18 @@ st.subheader("🔄 Reschedule Stores")
 # Get unique upcoming bucket dates (grouped by week)
 df_sheet["bucket_date"] = df_sheet["Visit Date"].apply(get_bucket_date)
 bucket_dates = sorted(df_sheet["bucket_date"].dropna().unique())
-future_buckets = [d for d in bucket_dates if d >= pd.Timestamp(datetime.today().date())]
+
+# ✅ Compute the *current* bucket (e.g., 12/15 if today is 12/16)
+today = pd.Timestamp(datetime.today().date())
+today_bucket_date = get_bucket_date(today)
+
+# ✅ Ensure current bucket is in the list, even if no stores are there yet
+if today_bucket_date not in bucket_dates:
+    bucket_dates = sorted(list(bucket_dates) + [today_bucket_date])
+
+# ✅ Allow moving to *current* bucket and future buckets
+future_buckets = [d for d in bucket_dates if d >= today_bucket_date]
+
 
 # Input method selection
 input_method = st.radio("Select input method:", 
